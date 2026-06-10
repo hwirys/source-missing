@@ -562,7 +562,7 @@ function startFakeBroadcast() {
       later(() => {
         if (state.ended) return;
         showSubtitle(pick(B.greets));
-        AUDIO.voice("_namecall", 0.6);   // 이름을 부르는, 사람이 아닌 목소리
+        AUDIO.voice("namecall", 0.6);   // 이름을 부르는, 사람이 아닌 목소리
         shakeFrame();
       }, 1500 + 2 * lineGap);
       later(() => {

@@ -124,9 +124,9 @@ html, body {
   background-size: cover;
   background-position: center;
   opacity: 0;
-  filter: blur(1.2px) saturate(.5) brightness(.62);
+  filter: blur(2px) saturate(.4) brightness(.4);
 }
-.bg-capture.loaded { opacity: .7; }
+.bg-capture.loaded { opacity: .5; }
 
 .figure { display: none; }   /* ASCII 잔상 → 합성 이미지로 대체됨 */
 .stage { transition: filter .25s ease; }
@@ -137,9 +137,10 @@ html, body {
   bottom: 36px;
   left: 0; right: 0;
   text-align: center;
-  color: var(--dim);
+  color: #c4ccd1;
   z-index: 2;
   letter-spacing: 1px;
+  text-shadow: 0 1px 4px rgba(0,0,0,.9);
 }
 
 .voice-overlay {
@@ -181,16 +182,16 @@ html, body {
   flex: 1;
   overflow-y: auto;
   padding: 8px 12px;
-  line-height: 1.55;
+  line-height: 1.7;
   min-height: 0;
 }
 .chat-log .t {
-  color: var(--muted);
+  color: #8b93a3;
   margin-right: 6px;
-  font-family: var(--font-ui);     /* 타임스탬프만 시스템 글꼴 — 어긋남의 흔적 */
-  font-size: 11px;
+  font-family: var(--font-ui);
+  font-size: 11.5px;
 }
-.chat-log .msg { color: var(--fg); font-size: 13px; }
+.chat-log .msg { color: #eef1f4; font-size: 14px; }
 .chat-log .msg.mine { color: var(--fg); }
 .chat-log .msg.sys { color: var(--warn); font-family: var(--font-ui); font-size: 12px; }
 .chat-log p { margin: 0; padding: 3px 2px; word-break: break-all; border-radius: 4px; }
@@ -285,10 +286,11 @@ html, body {
 
 .file-view, .archive-view, .restore-log {
   flex: 1;
-  padding: 18px 22px;
+  padding: 20px 26px;
   white-space: pre-wrap;
-  line-height: 1.7;
-  color: var(--fg);
+  line-height: 1.85;
+  font-size: 14.5px;
+  color: #e6eaed;
   overflow-y: auto;
   min-height: 0;
 }
@@ -767,24 +769,25 @@ body.in-windows .taskbar { display: flex; }
   right: 10px;
   top: 9%;
   bottom: 16%;
-  width: 176px;
+  width: 210px;
   z-index: 3;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  gap: 3px;
+  gap: 4px;
   overflow: hidden;
-  pointer-events: none;       /* 형상/이상현상 클릭을 막지 않는다 */
-  font-size: 11.5px;
-  line-height: 1.45;
+  pointer-events: none;
+  font-size: 13px;
+  line-height: 1.5;
 }
 .overlay-chat p {
   margin: 0;
-  padding: 2px 7px;
-  background: rgba(2,4,5,.5);
-  border-radius: 4px;
-  color: #dde3e6;
+  padding: 3px 8px;
+  background: rgba(0,0,0,.66);
+  border-radius: 5px;
+  color: #f1f4f6;
   word-break: break-all;
+  text-shadow: 0 1px 3px rgba(0,0,0,.9);
   animation: ov-in .25s ease 1;
 }
 .overlay-chat .onick { color: var(--chzzk); margin-right: 5px; font-size: 11px; }
@@ -829,20 +832,21 @@ body.in-windows .taskbar { display: flex; }
 /* 위장 방송 자막: 명조 — 읽어주는 척하는 글씨 */
 .subtitle {
   position: absolute;
-  bottom: 42px;
+  bottom: 46px;
   left: 50%;
   transform: translateX(-50%);
-  max-width: 80%;
+  max-width: 82%;
   z-index: 4;
   font-family: var(--font-old);
-  font-size: 17px;
+  font-size: 20px;
   line-height: 1.6;
-  color: #ccd5d9;
+  color: #eef2f4;
   letter-spacing: 1.5px;
   text-align: center;
-  padding: 6px 18px;
-  background: rgba(2, 3, 4, .45);
-  text-shadow: 0 0 10px rgba(190, 205, 215, .3);
+  padding: 8px 22px;
+  background: rgba(0, 0, 0, .62);
+  border-radius: 6px;
+  text-shadow: 0 1px 4px rgba(0,0,0,.95);
 }
 
 /* 음성 오버레이: 큰 낙서 */
@@ -899,7 +903,7 @@ body.in-windows .taskbar { display: flex; }
 /* 토스트 알림 */
 #toasts {
   position: fixed;
-  top: 70px; right: 24px;
+  top: 70px; left: 84px;
   z-index: 70;
   display: flex;
   flex-direction: column;
@@ -920,7 +924,7 @@ body.in-windows .taskbar { display: flex; }
   animation: toast-in .22s ease;
 }
 .toast.warn { border-left-color: var(--warn); }
-@keyframes toast-in { from { opacity: 0; transform: translateX(14px); } }
+@keyframes toast-in { from { opacity: 0; transform: translateX(-14px); } }
 
 /* 게임 HUD: 가볍고 평평하게 */
 .statusbar { background: transparent; border-top: 1px solid #1f2123; font-size: 12px; }

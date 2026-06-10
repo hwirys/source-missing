@@ -227,7 +227,8 @@ function computeObjective() {
 }
 
 function updateObjective() {
-  const t = "▸ " + computeObjective();
+  const o = computeObjective();
+  const t = o === "\u2014" ? "\u2014" : "할 일 ▸ " + o;
   document.querySelectorAll(".objbar").forEach((e) => (e.textContent = t));
 }
 
@@ -247,7 +248,7 @@ function boot() {
       log.appendChild(span);
       later(step, t === "" ? 350 : 150 + Math.random() * 200);
     } else {
-      $("#btn-enter").classList.remove("hidden");
+      $("#intro-card").classList.remove("hidden");
     }
   };
   step();

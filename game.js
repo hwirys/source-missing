@@ -96,6 +96,9 @@ const state = {
   ghostNoticed: false,   // 오버레이 유령 메시지 첫 인지
 
   /* recordings + 추가 공포 */
+  lungeUntil: 0,         // 한 프레임, 너무 가깝다
+  preReadDone: false,    // 전송 전 입력을 읽힌 적
+  rawEchoNoted: false,   // 오버레이가 원문을 띄운 적
   clipUntil: 0,
   clipsDone: new Set(),
   figHoverAt: 0,         // 형체 위에 커서가 머문 시각
@@ -194,33 +197,26 @@ function solvedReq() {
 }
 
 function computeObjective() {
-  if (state.ended) return "—";
-  if (state.watching) return "keep_watching — 아무것도 하지 않으면, 그대로 기록됩니다";
+  if (state.ended) return "\u2014";
+  if (state.watching) return "\u2014";
   if (!state.unlocked.desktop)
-    return `방송 화면 관찰 — 어긋난 곳을 클릭해 기록 (${state.anoms.size}/${DATA.anomalyNeed})  · 시간 · 시청자수 · 마이크 · 형상(채팅 직후) · 제목`;
-  if (!state.mapConfirmed)
-    return "filesystem → chat_motion_map.tmp 열기 — 형상이 무엇으로 움직이는지 확인";
-  if (solvedReq() === 0)
-    return "alert_test/ → parser_recovery.exe — 잘려나간 팬 채팅을 복원";
+    return `\uc5b4\uae0b\ub09c \uacf3 (${state.anoms.size}/3)`;
+  if (!state.mapConfirmed) return "\uc6c0\uc9c1\uc784\uc758 \ucd9c\ucc98";
+  if (solvedReq() === 0) return "alert_test/";
   if (state.fanBroken.size < 3)
-    return `fan_chat_log.txt — 깨진 시간대 [--:--] 줄 클릭 (${state.fanBroken.size}/3) → viewer_records 해금`;
+    return `\uae68\uc9c4 \uc2dc\uac04\ub300 (${state.fanBroken.size}/3)`;
   if (solvedReq() < DATA.puzzleReqCount)
-    return `파싱 복원 ${solvedReq()}/${DATA.puzzleReqCount} — parser_recovery.exe (복원할수록 시스템이 싫어한다)`;
+    return `\ubcf5\uc6d0 ${solvedReq()}/${DATA.puzzleReqCount}`;
   if (!state.routineCleared)
-    return state.routineFails >= 3
-      ? "routine_queue/ — rest_refusal.log의 순서 그대로: 잠 → 다음 방송 → 나중에"
-      : "routine_queue/ — 루틴 끊기 (먼저 rest_refusal.log 를 읽을 것)";
+    return state.routineFails >= 4 ? "rest_refusal.log \u2014 \uac70\uafb8\ub85c" : "\ub8e8\ud2f4";
   if (state.recViewed.size < 3)
-    return `viewer_records/ — 기록 열람 ${state.recViewed.size}/3 (original과 displayed를 비교)`;
-  if (!state.quizDone)
-    return "viewer_records → [기록 대조] — 무엇이 지워지는지 추론";
+    return `\uae30\ub85d (${state.recViewed.size}/3)`;
+  if (!state.quizDone) return "\ubb34\uc5c7\uc774 \uc9c0\uc6cc\uc9c0\ub294\uac00";
   if (state.mapConfirmed && state.clipsDone.size < DATA.clips.length)
-    return `recordings/ — 잘린 다시보기 검토 (${state.clipsDone.size}/${DATA.clips.length}) — 왜 전부 끝이 잘려 있나`;
-  if (!state.restoreRan)
-    return "restore/ — 복원 소스 실험. 전부 켜는 것이 답이 아닐 수 있다";
-  if (state.dnrVisible && !state.dnrRead)
-    return "Desktop에 do_not_restore.txt 가 나타났다 — 휴식 엔딩의 조건표";
-  return "SYSTEM MENU — 마지막 선택 (rest의 잠금 사유는 메뉴에서 그대로 보인다)";
+    return `\uc798\ub9b0 \ub05d (${state.clipsDone.size}/${DATA.clips.length})`;
+  if (!state.restoreRan) return "\uc804\ubd80 \ubcf5\uc6d0\ud558\uc9c0 \ub9d0 \uac83";
+  if (state.dnrVisible && !state.dnrRead) return "\uc228\uae40 \ud30c\uc77c";
+  return "\ub9c8\uc9c0\ub9c9 \uc120\ud0dd";
 }
 
 function updateObjective() {
@@ -242,7 +238,7 @@ function boot() {
       if (cls) span.className = cls;
       span.textContent = t + "\n";
       log.appendChild(span);
-      later(step, t === "" ? 500 : 280 + Math.random() * 300);
+      later(step, t === "" ? 350 : 150 + Math.random() * 200);
     } else {
       $("#btn-enter").classList.remove("hidden");
     }
@@ -274,9 +270,9 @@ function startLive() {
   every(micFlutter, 300);
   every(titleDrift, 12000);
   every(checkIdle, 5000);
-  every(flickerTick, 9000);
+  every(flickerTick, 7000);
   every(silenceTick, 16000);
-  every(captionTick, 14000);
+  every(captionTick, 10000);
   every(presenceTick, 7000);
   every(emptyRoomTick, 25000);
   every(broadcastTick, 5000);
@@ -359,8 +355,15 @@ function flickerTick() {
   if (state.ended || state.phase < 2) return;
   if (Date.now() < state.broadcastUntil) return;
   if (activeScreen() !== "live") return;
-  if (Math.random() > 0.35) return;
+  if (Math.random() > 0.5) return;
   const now = Date.now();
+  // phase 3: 드물게, 어둠 다음 한 프레임 동안 형체가 너무 가깝다
+  if (state.phase >= 3 && Math.random() < 0.16) {
+    state.blackUntil = now + 200;
+    state.lungeUntil = now + 380;
+    AUDIO.voice("언니", 0.12, 0.5);
+    return;
+  }
   state.blackUntil = now + 180;
   state.sharpUntil = now + 360;
   if (Math.random() < 0.5) AUDIO.glitch(0.25); // 절반은 소리 없이
@@ -370,7 +373,7 @@ function flickerTick() {
 function silenceTick() {
   if (state.ended || state.phase < 3) return;
   if (Date.now() < state.broadcastUntil) return;
-  if (Math.random() > 0.3) return;
+  if (Math.random() > 0.45) return;
   AUDIO.silence(3.5);
   nextChatAt = Date.now() + 5200;
   if (Math.random() < 0.35) {
@@ -417,9 +420,9 @@ function emptyRoomTick() {
   if (state.ended || state.phase < 3) return;
   if (activeScreen() !== "live") return;
   if (Date.now() < state.broadcastUntil) return;
-  if (Math.random() > 0.18) return;
+  if (Math.random() > 0.3) return;
   const now = Date.now();
-  if (now - state.lastEmptyAt < 120 * 1000) return;
+  if (now - state.lastEmptyAt < 90 * 1000) return;
   state.lastEmptyAt = now;
 
   state.blackUntil = now + 22000;
@@ -457,9 +460,9 @@ function broadcastTick() {
   if (state.ended || state.phase < 2) return;
   const now = Date.now();
   if (now < state.broadcastUntil || now < state.clipUntil) return;
-  if (!nextBroadcastAt) { nextBroadcastAt = now + 45000; return; }
+  if (!nextBroadcastAt) { nextBroadcastAt = now + 35000; return; }
   if (now < nextBroadcastAt) return;
-  nextBroadcastAt = now + 130000 + Math.random() * 60000;
+  nextBroadcastAt = now + 90000 + Math.random() * 50000;
   startFakeBroadcast();
 }
 
@@ -489,7 +492,7 @@ function startFakeBroadcast() {
   const first = state.broadcastCount === 0;
   state.broadcastCount++;
   const lines = buildBroadcastLines(first);
-  const lineGap = 2600;
+  const lineGap = 2200;
   const dur = 1500 + lines.length * lineGap + 3800;
   state.broadcastUntil = Date.now() + dur;
 
@@ -565,9 +568,9 @@ function ghostTick() {
   if (state.ended || state.phase < 2) return;
   if (activeScreen() !== "live") return;
   if (Date.now() < state.broadcastUntil) return;
-  if (Math.random() > 0.2) return;
+  if (Math.random() > 0.35) return;
   const now = Date.now();
-  if (now - lastGhostAt < 35 * 1000) return;
+  if (now - lastGhostAt < 25 * 1000) return;
   lastGhostAt = now;
   overlayAdd("", pick(DATA.overlayGhosts), true);
   if (!state.ghostNoticed) {
@@ -583,8 +586,8 @@ function viewerTick() {
   if (state.ended || state.phase < 3) return;
   if (activeScreen() !== "live") return;
   const now = Date.now();
-  if (now - state.viewerFlickAt < 70 * 1000) return;
-  if (Math.random() > 0.14) return;
+  if (now - state.viewerFlickAt < 50 * 1000) return;
+  if (Math.random() > 0.22) return;
   state.viewerFlickAt = now;
   const v = $("#viewer-count");
   v.textContent = "2명 시청 중";
@@ -723,7 +726,7 @@ function autoChat() {
   if (state.ended) return;
   const now = Date.now();
   if (now < nextChatAt) return;
-  const gap = { 1: [4500, 9000], 2: [3500, 7000], 3: [2200, 5000] }[state.phase];
+  const gap = { 1: [2000, 4200], 2: [1400, 3000], 3: [900, 2100] }[state.phase];
   nextChatAt = now + gap[0] + Math.random() * (gap[1] - gap[0]);
   let pool = DATA.chat[state.phase];
   if (state.restoreRan && Math.random() < 0.3) pool = DATA.restoreChat;
@@ -734,11 +737,11 @@ function autoChat() {
     const line = pick(pool);
     chatAdd(line);
     // 같은 말이 다른 닉으로 한 번 더 올라온다 — 아무도 그걸 지적하지 않는다
-    if (state.phase >= 3 && Math.random() < 0.12) {
+    if (state.phase >= 3 && Math.random() < 0.18) {
       later(() => { if (!state.ended) chatAdd(line); }, 700);
     }
   }
-  if (state.phase >= 3 && Math.random() < 0.04) {
+  if (state.phase >= 3 && Math.random() < 0.08) {
     // 가끔은 반속으로, 가끔은 로봇 톤으로 — 진짜와 합성이 섞여 들린다
     const slow = Math.random() < 0.4;
     const ai = Math.random() < 0.35;
@@ -751,9 +754,9 @@ function restChatTick() {
   if (state.ended || state.phase < 1) return;
   if (Date.now() < state.broadcastUntil) return;
   const now = Date.now();
-  if (!nextRestChatAt) nextRestChatAt = now + 18000;
+  if (!nextRestChatAt) nextRestChatAt = now + 12000;
   if (now < nextRestChatAt) return;
-  nextRestChatAt = now + 30000 + Math.random() * 20000;
+  nextRestChatAt = now + 20000 + Math.random() * 15000;
   chatAdd(pick(DATA.restChat));
   state.energy = 5.5;
   state.restWindowUntil = now + 2600;
@@ -889,6 +892,19 @@ function sendChat() {
   chatAdd(out, "mine");
   shakeFrame();
 
+  // 오버레이는 파서를 거치지 않는다 — 가끔, 잘리기 전 원문이 화면에 뜬다
+  if (state.phase >= 3 && out !== raw && Math.random() < 0.3) {
+    later(() => {
+      if (state.ended) return;
+      overlayAdd("", raw, true);
+      if (!state.rawEchoNoted) {
+        state.rawEchoNoted = true;
+        addClue("화면 속 채팅에 내가 '실제로 친' 문장이 떴다 — 잘리기 전의 원문.",
+          "→ 저쪽은 원본을 본다.");
+      }
+    }, 1200);
+  }
+
   // 네 말은 저장된다 — 나중에 다른 입으로 돌아온다
   state.echoes.push(out);
   if (state.echoes.length > 12) state.echoes.shift();
@@ -917,7 +933,7 @@ function sendChat() {
   if (out !== raw && state.phase >= 2 && Math.random() < 0.6) {
     later(() => {
       if (!state.ended) chatAdd(pick(DATA.reactions[Math.min(3, state.phase)]));
-    }, 900 + Math.random() * 1500);
+    }, 600 + Math.random() * 900);
   }
 }
 
@@ -958,6 +974,15 @@ function renderFigure() {
   // 프레임 드랍: 한순간 아무것도 없다
   if (now < state.blackUntil) { fimg.style.visibility = "hidden"; return; }
   fimg.style.visibility = "visible";
+
+  // 돌진 프레임: 설명 없이 지나간다
+  if (now < state.lungeUntil) {
+    setFig(fimg, "fig_sharp");
+    fimg.style.transform = "translateX(-32%) scale(1.55)";
+    fimg.style.opacity = "0.92";
+    state.energy *= 0.93;
+    return;
+  }
 
   const presenting = now < state.broadcastUntil;
   const sharp = now < state.sharpUntil;
@@ -1343,7 +1368,7 @@ function renderFanlog() {
 
 function playClip(clip) {
   showScreen("live");
-  const lineGap = 2100;
+  const lineGap = 1800;
   const dur = 1300 + clip.lines.length * lineGap + 1200;
   state.clipUntil = Date.now() + dur;
 
@@ -1621,7 +1646,7 @@ function routineFail(name) {
     spawnLine = `\n\nnew task created:\n${newTask}`;
   }
   setTodoView(`${DATA.routineFail.join("\n")}${spawnLine}\n\nroutine_failure_count: ${state.routineFails}` +
-    (state.routineFails >= 3 ? "\n\n힌트: rest_refusal.log — \"거꾸로: 잠 → 다음 방송 → 나중에\"" : ""));
+    (state.routineFails >= 4 ? "\n\nrest_refusal.log" : ""));
   chatSys("routine_queue regenerated.");
   renderTodos();
   updateObjective();
@@ -1804,7 +1829,7 @@ function runRestore() {
         state.energy = 6;
         chatSys("rest permission: denied");
       }
-      later(step, 1900);
+      later(step, 1400);
     } else {
       finishRestoreRun();
     }
@@ -1980,6 +2005,24 @@ function attemptEndStream() {
   }
 }
 
+/* ── 전송 전 선독: 쓰다 멈춘 글을 채팅이 먼저 읽는다 (1회) ── */
+
+let preReadTimer = 0;
+
+$("#chat-input").addEventListener("input", (e) => {
+  if (state.preReadDone || state.phase < 3 || state.ended) return;
+  clearTimeout(preReadTimer);
+  if (e.target.value.trim().length >= 3) {
+    preReadTimer = setTimeout(() => {
+      if (state.ended || state.preReadDone) return;
+      if ($("#chat-input").value.trim().length < 3) return;
+      state.preReadDone = true;
+      chatAdd("그거 보내지 마", "creep");
+    }, 2200);
+    state.timers.push(preReadTimer);
+  }
+});
+
 /* ── 입력 흔적 감지 — 쓰다 지운 것도 보인다 ───────────── */
 
 let prevInputLen = 0;
@@ -2062,7 +2105,7 @@ function endingSequence(key) {
       if (/rest accepted|나갔습니다/.test(line)) span.className = "ok";
       span.textContent = line + "\n";
       log.appendChild(span);
-      setTimeout(step, line === "" ? 700 : 350 + Math.random() * 350);
+      setTimeout(step, line === "" ? 480 : 220 + Math.random() * 230);
     } else {
       $("#btn-reconnect").classList.remove("hidden");
     }

@@ -539,6 +539,7 @@ function startFakeBroadcast() {
   $("#status-text").textContent = "avatar: presenting | script: assembled | mic: no input";
   AUDIO.radioTune(1.8);
   AUDIO.bgm("bgm_fake_opening", 0.45); // 그녀의 발성으로 합성된 어설픈 허밍
+  later(() => AUDIO.voice("언하", 0.5), 1500); // 항상 "언하 언하"로 시작 — 합성된 인사
   state.energy = 0;
 
   const B = DATA.broadcast;
@@ -558,7 +559,12 @@ function startFakeBroadcast() {
     later(() => AUDIO.voice("기다려", 0.32, 0.8, true), 1500 + (lines.length - 2) * lineGap);
     // 그것은 이미 떠난 시청자를 이름으로 부른다 — 가장 구체적인 "언니가 아님"의 증거
     if (state.broadcastCount >= 2) {
-      later(() => { if (!state.ended) showSubtitle(pick(B.greets)); }, 1500 + 2 * lineGap);
+      later(() => {
+        if (state.ended) return;
+        showSubtitle(pick(B.greets));
+        AUDIO.voice("_namecall", 0.6);   // 이름을 부르는, 사람이 아닌 목소리
+        shakeFrame();
+      }, 1500 + 2 * lineGap);
       later(() => {
         if (state.ended) return;
         chatAdd(pick(B.greetReacts), "creep");
@@ -825,13 +831,20 @@ function chatStamp() {
   return "--:--";
 }
 
-/* 닉네임은 항상 한 글자씩 깨져 있다 — 같은 사람도 매번 다른 곳이 깨진다 */
-const NICK_BREAKS = ["▒", "□", "�", "?"];
+/* 닉네임은 인코딩이 깨진 것처럼 보인다 — 모지바케/깨진 바이트 조각 */
+const MOJIBAKE = ["占쏙옙", "占", "쏙옙", "졇", "곎", "쒼", "벿", "쥃", "겚", "꺠", "鬼", "鄕", "鈺"];
 
 function breakNick(name) {
   if (name.length < 2) return name;
-  const i = Math.floor(Math.random() * name.length);
-  return name.slice(0, i) + pick(NICK_BREAKS) + name.slice(i + 1);
+  // 1~2글자 구간을 깨진 바이트 덩어리로 치환 (간헐적으로 두 군데)
+  const out = name.split("");
+  const spots = Math.random() < 0.35 ? 2 : 1;
+  for (let s = 0; s < spots; s++) {
+    const i = Math.floor(Math.random() * out.length);
+    const len = 1 + (Math.random() < 0.4 ? 1 : 0);
+    out.splice(i, len, pick(MOJIBAKE));
+  }
+  return out.join("");
 }
 
 /* 치지직풍 닉네임 — 후반으로 갈수록 이상한 이름의 비중이 커진다 */

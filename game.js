@@ -130,6 +130,12 @@ function activeScreen() {
   const s = document.querySelector(".screen.active");
   return s ? s.id.replace("screen-", "") : "";
 }
+
+/* 위장 방송/클립 재생 중에는 앰비언트 연출이 끼어들지 않는다 */
+function sceneLocked() {
+  const now = Date.now();
+  return now < state.broadcastUntil || now < state.clipUntil;
+}
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function pad(n) { return String(n).padStart(2, "0"); }
 function nowClock() { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
@@ -280,6 +286,7 @@ function startLive() {
   every(viewerTick, 9000);
   every(addrGhostTick, 4000);
   chatSys("채팅에 연결되었습니다.");
+  later(() => toast("화면에서 어긋난 것을 찾아 클릭하세요"), 1200);
   if (save.runs >= 1) later(() => chatSys("returning_viewer detected."), 4000);
   updateObjective();
 }
@@ -353,15 +360,18 @@ function micFlutter() {
 /* 프레임 드랍: 형상이 한순간 사라졌다가, 한 프레임만 너무 선명해진다 */
 function flickerTick() {
   if (state.ended || state.phase < 2) return;
-  if (Date.now() < state.broadcastUntil) return;
+  if (sceneLocked()) return;
   if (activeScreen() !== "live") return;
   if (Math.random() > 0.5) return;
   const now = Date.now();
-  // phase 3: 드물게, 어둠 다음 한 프레임 동안 형체가 너무 가깝다
+  // phase 3: 드물게, 화면이 한 번 깜빡하고 — 형체가 코앞에 와 있다
   if (state.phase >= 3 && Math.random() < 0.16) {
-    state.blackUntil = now + 200;
-    state.lungeUntil = now + 380;
-    AUDIO.voice("언니", 0.12, 0.5);
+    const blink = $("#blink");
+    if (blink) { blink.classList.remove("on"); void blink.offsetWidth; blink.classList.add("on"); }
+    state.lungeUntil = now + 420;
+    AUDIO.glitch(0.9);
+    AUDIO.voice("언니", 0.14, 0.5);
+    shakeFrame();
     return;
   }
   state.blackUntil = now + 180;
@@ -372,7 +382,7 @@ function flickerTick() {
 /* 정적: 룸톤과 채팅이 같이 끊긴다. 정적이 끝나면 누군가 한 줄 올린다 */
 function silenceTick() {
   if (state.ended || state.phase < 3) return;
-  if (Date.now() < state.broadcastUntil) return;
+  if (sceneLocked()) return;
   if (Math.random() > 0.45) return;
   AUDIO.silence(3.5);
   nextChatAt = Date.now() + 5200;
@@ -392,7 +402,7 @@ function silenceTick() {
 /* caption 회전: 시스템 상태 표기가 점점 이쪽을 향한다 */
 function captionTick() {
   if (state.ended || state.phase < 2) return;
-  if (Date.now() < state.broadcastUntil) return;
+  if (sceneLocked()) return;
   if (Date.now() < state.listenUntil) return;
   const maxIdx = state.phase >= 3 ? DATA.captions.length : 4;
   const idx = Math.floor(Math.random() * maxIdx);
@@ -404,7 +414,7 @@ function captionTick() {
 /* 자리 비움 감지: 입력이 없으면 채팅이 먼저 말을 건다 */
 function presenceTick() {
   if (state.ended || state.phase < 2) return;
-  if (Date.now() < state.broadcastUntil) return;
+  if (sceneLocked()) return;
   if (activeScreen() !== "live") return;
   const now = Date.now();
   if (now - state.lastActivity < 30 * 1000) return;
@@ -419,7 +429,7 @@ function presenceTick() {
 function emptyRoomTick() {
   if (state.ended || state.phase < 3) return;
   if (activeScreen() !== "live") return;
-  if (Date.now() < state.broadcastUntil) return;
+  if (sceneLocked()) return;
   if (Math.random() > 0.3) return;
   const now = Date.now();
   if (now - state.lastEmptyAt < 90 * 1000) return;
@@ -567,7 +577,7 @@ let lastGhostAt = 0;
 function ghostTick() {
   if (state.ended || state.phase < 2) return;
   if (activeScreen() !== "live") return;
-  if (Date.now() < state.broadcastUntil) return;
+  if (sceneLocked()) return;
   if (Math.random() > 0.35) return;
   const now = Date.now();
   if (now - lastGhostAt < 25 * 1000) return;
@@ -752,7 +762,7 @@ function autoChat() {
 /* "쉬어도 돼" 특수 채팅 — 형상 과민 반응 (이상 현상 6번) */
 function restChatTick() {
   if (state.ended || state.phase < 1) return;
-  if (Date.now() < state.broadcastUntil) return;
+  if (sceneLocked()) return;
   const now = Date.now();
   if (!nextRestChatAt) nextRestChatAt = now + 12000;
   if (now < nextRestChatAt) return;
@@ -1055,6 +1065,7 @@ function handleCmd(cmd) {
   switch (cmd) {
     case "desktop":
       if (!state.unlocked.desktop) { chatSys("filesystem: locked. (이상 현상 3개 필요)"); return; }
+      $("#btn-desktop").classList.remove("new");
       openDesktop(); break;
     case "clues": $("#clue-panel").classList.toggle("hidden"); renderClues(); break;
     case "back": showScreen("live"); break;

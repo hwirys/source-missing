@@ -343,7 +343,7 @@ const TITLES = [
 function stuckNudge() {
   if (state.ended || state.unlocked.desktop) return;
   if (state.anoms.size === 0 && activeScreen() === "live") {
-    toast("멈춰 있는 숫자들을 눌러보세요 — 시간, 시청자 수", false);
+    toast("멈춰 있는 숫자들을 눌러보세요 — 시간, 시청자 수");
   } else if (state.anoms.size > 0 && state.anoms.size < 3) {
     toast(`어긋난 곳 ${state.anoms.size}/3 — 마이크 게이지, 방송 제목도 살펴보세요`, false);
   }
@@ -564,8 +564,8 @@ function startFakeBroadcast() {
         chatAdd(pick(B.greetReacts), "creep");
         if (!state.greetNoticed) {
           state.greetNoticed = true;
-          addClue("그것이 이미 '나간' 시청자를 이름으로 불렀다.",
-            "→ 떠난 사람도 기록으로 남아 있다 — 그것에게는 우리가 전부 '재료'다.");
+          addClue("나간 시청자를 이름으로 불렀다 — 기록에 남은 닉으로.",
+            "→ 떠나도 기록은 남는다. 그것에게 우린 전부 재료다.");
         }
       }, 1500 + 2 * lineGap + 1400);
     }
@@ -1341,8 +1341,8 @@ status: returned
     setDeskView(f.body);
     if (!state.substituteRead) {
       state.substituteRead = true;
-      addClue("그것의 정체: substitute_0 — 원본(언니) 0%. 채팅·기록·생성음성으로 채워진 대체물.",
-        "→ 그것은 방송이 끝나면 사라진다. 그래서 '쉬어'를 지운다.");
+      addClue("substitute_0. 원본 0%. 채팅·기록·목소리로 채워진 대체본.",
+        "→ 방송이 끝나면 소스가 사라진다. 그래서 '쉬어'를 지운다.");
     }
     return;
   }

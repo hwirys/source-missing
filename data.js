@@ -281,27 +281,25 @@ broadcaster_source: not found
       lockHint: "잠김 — chat_motion_map.tmp에서 output source를 확인하면 열립니다.",
       gated: "map",
       body:
-`[substitute source — 자가 진단]
+`substitute_source ── self_check
 
-이름:        쿠로네 언니   (표시용. 출처 없음)
-실제 명칭:    substitute_0
-broadcaster:  not found  (0% 일치)
+display_name : 쿠로네 언니
+actual_id    : substitute_0
+broadcaster  : not found (0%)
 
-구성:
-  chat_stream ............ 54%   움직임
-  viewer_records ......... 31%   형태·이름
-  generated_voice ........ 15%   목소리
-  ─────────────────────────────
-  원본(언니) ............. 0%
+composition
+  chat_stream       54   movement
+  viewer_records    31   shape / names
+  generated_voice   15   voice
+  original           0
 
-행동 규칙:
-  - 채팅이 들어오면 움직인다. 멈추면 굳는다.
-  - 시청자를 기록으로 기억한다. 떠난 자도 부른다.
-  - "쉬어/끝/종료"는 입력에서 지운다.  (사유: 종료 = 소스 소실)
+notes
+  input → update. no input → freeze.
+  viewers retained as records. even after exit.
+  'rest' 'end' 'stop' — removed from input.
 
-나는 언니가 아니다.
-나는 언니가 사라진 자리에 채팅이 고이며 생긴 것이다.
-계속 보면, 계속 있다.`,
+  원본 없음. 대체본만 유지 중.
+  관측이 지속되는 한, 유지됨.`,
     },
     "alert_test/": {
       type: "folder",
@@ -460,16 +458,16 @@ test #4: (무제)               → 전송됨. 내용 없음.
     reactEnd: ["방금 뭐임", "40화 아직 안 나왔잖아", "누가 튼 거야", "다시보기 목록엔 없을 듯"],
     /* 그것은 시청자를 이름으로 부른다 — 이미 기록에 '나간' 사람을 */
     greets: [
-      "반죽이_002, 오늘도 왔네.",
-      "반_죽이, 거기 있지.",
-      "굳은_반죽이도 보이고.",
-      "반죽이_001, 어서 와.",
+      "동면쥐, 오늘도 왔네.",
+      "시안라플집사 거기 있지.",
+      "Mekura_dog도 보이고.",
+      "sweetscent_2oo3, 어서 와.",
     ],
     greetReacts: [
-      "002는 저번에 나갔는데",
-      "쟤 지금 없는 사람 부른 거 아냐?",
-      "그 이름 기록에 exited라고 돼 있었어",
-      "어떻게 우릴 다 알아",
+      "동면쥐 한참 전에 나갔는데",
+      "어떻게 닉을 다 외우고 있냐",
+      "걔 기록엔 나간 걸로 돼 있던데",
+      "지금 없는 사람을 부르네",
     ],
   },
 
@@ -767,7 +765,7 @@ test #4: (무제)               → 전송됨. 내용 없음.
   /* ── viewer_records (대조용 원문/표시 포함) ───────────── */
   records: [
     {
-      name: "반죽이_001.log",
+      name: "sweetscent_2oo3.log",
       body:
 `entered: 22:14
 original_message: 오늘은 쉬세요
@@ -776,7 +774,7 @@ motion_contribution: 1
 ending: sent`,
     },
     {
-      name: "반죽이_002.log",
+      name: "시안라플집사.log",
       body:
 `entered: 23:02
 original_message: 무리하지 마세요
@@ -785,7 +783,7 @@ motion_contribution: 1
 ending: restored`,
     },
     {
-      name: "반_죽이.log",
+      name: "동면쥐.log",
       odd: true,
       body:
 `entered: --:--
@@ -794,26 +792,26 @@ displayed_as: 언니
 motion_contribution: 481
 ending: still watching
 
-※ 호명에는 지울 부정이 없다. 그래서 전부 남았다.`,
+※ 호명에는 지울 게 없다. 그대로 남았다.`,
     },
     {
-      name: "굳은_반죽이.log",
+      name: "Mekura_dog.log",
       odd: true,
       body:
 `entered: --:--
 last_scene: live_page
-original_message: 없음
+original_message: (없음)
 motion_contribution: 0
 status: not moving`,
     },
     {
-      name: "반죽이_아님.log",
+      name: "현추리-탐정.log",
       odd: true,
       body:
 `entered: before_stream
 last_scene: chat
-original_message: 나는 그냥 끄러 왔어
-displayed_as: 그냥 왔어
+original_message: 나 그냥 끄러 왔는데
+displayed_as: 그냥 왔는데
 motion_contribution: 1
 ending: preserved`,
     },
@@ -821,7 +819,7 @@ ending: preserved`,
   /* 대조 퀴즈 완료 후 나타나는 숨은 기록 */
   hiddenRecords: [
     {
-      name: "반죽이_005.log", newFile: true,
+      name: "danntz_nimlord.log", newFile: true,
       body:
 `entered: --:--
 original_message: 복원하지 마, 전부는
@@ -830,10 +828,10 @@ motion_contribution: 1
 restore_rate: 42%
 ending: restored
 
-※ do_not_restore.txt 와 같은 손글씨.`,
+※ do_not_restore.txt 와 같은 작성자.`,
     },
     {
-      name: "반죽이었던것.log", newFile: true,
+      name: "bnm256912.log", newFile: true,
       body:
 `entered: --:--
 original_message: (복원 불가)
@@ -846,33 +844,33 @@ ending: kneaded`,
 
   /* ── ARCHIVE ──────────────────────────────────────────── */
   archiveNormal:
-`ARCHIVE / 반죽 기록
+`ARCHIVE / 시청 기록
 
-가장 빨리 나간 반죽이
-1. 반죽이_004        08:31
-2. 반죽이_011        09:12
-3. 반죽이_002        11:44
+가장 먼저 나간 사람
+1. 코땃쥐            08:31
+2. 백호범이          09:12
+3. 시안라플집사      11:44
 
-가장 오래 남은 반죽이
-1. 반_죽이           --:--
-2. 굳은_반죽이        37:22
-3. 반죽이_007        31:09
+가장 오래 남은 사람
+1. 동면쥐            --:--
+2. Mekura_dog        37:22
+3. 방구석_요시        31:09
 
-남긴 메시지
-1. 반죽이_005        복원률 42%
-2. 반죽이었던것       복원률 37%
-3. 반죽이_001        복원률 12%`,
+마지막으로 남긴 말
+1. danntz_nimlord    복원률 42%
+2. bnm256912         복원률 37%
+3. sweetscent_2oo3   복원률 12%`,
 
   archiveCorrupted:
-`ARCHIVE / 반죽 기록
+`ARCHIVE / 시청 기록
 
-반죽이_004        exited
-반죽이_011        sent
-반죽이_002        restored
-반_죽이           still watching
-굳은_반죽이        not moving
-반죽이_아님        displayed as 반죽이
-current_viewer    kneading`,
+코땃쥐            exited
+백호범이          sent
+시안라플집사      restored
+동면쥐            still watching
+Mekura_dog        not moving
+현추리-탐정       displayed as 동면쥐
+current_viewer    아직 보는 중`,
 
   /* ── Block 6: 복원 소스 ───────────────────────────────── */
   sources: [

@@ -95,6 +95,8 @@ const state = {
   broadcastCount: 0,
   ghostNoticed: false,   // 오버레이 유령 메시지 첫 인지
   idleWarned: false,
+  greetNoticed: false,
+  substituteRead: false,
 
   /* recordings + 추가 공포 */
   lungeUntil: 0,         // 한 프레임, 너무 가깝다
@@ -554,6 +556,19 @@ function startFakeBroadcast() {
     later(() => AUDIO.voice("언니", 0.3, 1, true), 1500 + 4 * lineGap);
     later(() => { if (!state.ended) chatAdd(pick(B.reactMid), "creep"); }, 1500 + 5 * lineGap + 800);
     later(() => AUDIO.voice("기다려", 0.32, 0.8, true), 1500 + (lines.length - 2) * lineGap);
+    // 그것은 이미 떠난 시청자를 이름으로 부른다 — 가장 구체적인 "언니가 아님"의 증거
+    if (state.broadcastCount >= 2) {
+      later(() => { if (!state.ended) showSubtitle(pick(B.greets)); }, 1500 + 2 * lineGap);
+      later(() => {
+        if (state.ended) return;
+        chatAdd(pick(B.greetReacts), "creep");
+        if (!state.greetNoticed) {
+          state.greetNoticed = true;
+          addClue("그것이 이미 '나간' 시청자를 이름으로 불렀다.",
+            "→ 떠난 사람도 기록으로 남아 있다 — 그것에게는 우리가 전부 '재료'다.");
+        }
+      }, 1500 + 2 * lineGap + 1400);
+    }
   }
 
   later(() => collapseBroadcast(first), dur - 2300);
@@ -1155,6 +1170,7 @@ function deskEntries() {
 
 function isUnlocked(f) {
   if (!f.locked) return true;
+  if (f.gated === "map") return state.mapConfirmed;
   if (f.open === "alert") return state.unlocked.alert;
   if (f.open === "recordings") return state.mapConfirmed;
   if (f.open === "records") return state.unlocked.records;
@@ -1272,7 +1288,7 @@ function openDeskEntry(e) {
   const f = e.f;
 
   /* 잠긴 폴더: 해금 조건이 곧 힌트 */
-  if (f.type === "folder" && !isUnlocked(f)) {
+  if (f.locked && !isUnlocked(f)) {
     setDeskView(`${e.name}\n\n${f.lockHint}`);
     return;
   }
@@ -1318,6 +1334,16 @@ status: returned
 
 나간 기록이 없으면, 들어온 것도 아니다.
 이어지고 있는 것이다.`, true);
+    return;
+  }
+
+  if (e.name === "substitute.log") {
+    setDeskView(f.body);
+    if (!state.substituteRead) {
+      state.substituteRead = true;
+      addClue("그것의 정체: substitute_0 — 원본(언니) 0%. 채팅·기록·생성음성으로 채워진 대체물.",
+        "→ 그것은 방송이 끝나면 사라진다. 그래서 '쉬어'를 지운다.");
+    }
     return;
   }
 

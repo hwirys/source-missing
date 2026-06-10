@@ -393,7 +393,7 @@ function flickerTick() {
     if (blink) { blink.classList.remove("on"); void blink.offsetWidth; blink.classList.add("on"); }
     state.lungeUntil = now + 420;
     AUDIO.glitch(0.9);
-    AUDIO.voice("언니", 0.14, 0.5);
+    AUDIO.voice("언니", 0.14, 0.82);
     shakeFrame();
     return;
   }
@@ -556,7 +556,7 @@ function startFakeBroadcast() {
     later(() => { if (!state.ended) chatAdd(pick(B.reactMid), "creep"); }, 1500 + 3 * lineGap + 1200);
     later(() => AUDIO.voice("언니", 0.3, 1, true), 1500 + 4 * lineGap);
     later(() => { if (!state.ended) chatAdd(pick(B.reactMid), "creep"); }, 1500 + 5 * lineGap + 800);
-    later(() => AUDIO.voice("기다려", 0.32, 0.8, true), 1500 + (lines.length - 2) * lineGap);
+    later(() => AUDIO.voice("기다려", 0.32, 0.9, true), 1500 + (lines.length - 2) * lineGap);
     // 그것은 이미 떠난 시청자를 이름으로 부른다 — 가장 구체적인 "언니가 아님"의 증거
     if (state.broadcastCount >= 2) {
       later(() => {
@@ -800,7 +800,7 @@ function autoChat() {
     // 가끔은 반속으로, 가끔은 로봇 톤으로 — 진짜와 합성이 섞여 들린다
     const slow = Math.random() < 0.4;
     const ai = Math.random() < 0.35;
-    AUDIO.voice(pick(DATA.whispers), slow ? 0.18 : 0.25, slow ? 0.55 : 1, ai);
+    AUDIO.voice(pick(DATA.whispers), slow ? 0.18 : 0.25, slow ? 0.86 : 1, ai);
   }
 }
 
@@ -1393,7 +1393,7 @@ function openFinalTale() {
   const prev = DATA.statusbars[state.phase];
   status.textContent = "mic: INPUT DETECTED | avatar: still | chat: connected";
 
-  later(() => AUDIO.voice("아직", 0.3, 0.55), 3200); // 반속의 낮은 한 마디
+  later(() => AUDIO.voice("아직", 0.3, 0.85), 3200); // 반속의 낮은 한 마디
   later(() => {
     status.textContent = prev;
     if (!state.ended) chatAdd("방금 마이크 켜졌었지", "creep");
@@ -1465,7 +1465,7 @@ function playClip(clip) {
     later(() => { if (!state.ended) showSubtitle(l); }, 1300 + i * lineGap);
   });
   // 녹화 특유의 흐릿한 음성 잔재
-  later(() => AUDIO.voice("아", 0.22, 0.7, true), 1300 + lineGap);
+  later(() => AUDIO.voice("아", 0.22, 0.9, true), 1300 + lineGap);
 
   later(() => {
     if (state.ended) return;
@@ -1586,7 +1586,7 @@ function answerPuzzle(p, opt, btn) {
     if (state.clipsDone.size === DATA.clips.length) {
       later(() => {
         toast("recordings: 모든 클립 검토 완료");
-        AUDIO.voice("기다려", 0.3, 0.55);
+        AUDIO.voice("기다려", 0.3, 0.85);
         addClue(DATA.clipsAllClue.text, DATA.clipsAllClue.next);
       }, 900);
     }
@@ -2154,8 +2154,8 @@ function runEnding(key) {
     const status = $("#status-text");
     status.textContent = "mic: input detected";
     AUDIO.radioTune(1.5);
-    later(() => AUDIO.voice("고", 0.35, 0.6), 600);
-    later(() => AUDIO.voice("보고", 0.28, 0.55), 1500);
+    later(() => AUDIO.voice("고", 0.35, 0.88), 600);
+    later(() => AUDIO.voice("보고", 0.28, 0.85), 1500);
     later(() => endingSequence(key), 2800);
     return;
   }

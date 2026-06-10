@@ -1029,3 +1029,88 @@ body.in-windows .taskbar { display: flex; }
   font-weight: 700;
 }
 .intro-card .ghost-btn:hover { background: rgba(0,248,137,.12); border-color: var(--chzzk); }
+
+/* ════ 모바일 대응 ════════════════════════════════ */
+@media (max-width: 860px) {
+  html, body { font-size: 13px; }
+
+  /* 라이브: 세로 스택 — 영상 위, 채팅 아래 */
+  .page-row { flex-direction: column; }
+  .lnb { display: none; }              /* 좁은 화면에선 사이드바 숨김 */
+  .gnb { height: 48px; padding: 0 12px; gap: 12px; }
+  .gnb-search { display: none; }
+  .gnb-logo { font-size: 18px; }
+
+  .content-col { flex: 0 0 auto; }
+  .chzzk-page .stage { height: 42vh; min-height: 200px; }
+  .figure-img { height: 70%; }
+
+  .chat-panel {
+    width: auto;
+    border-left: none;
+    border-top: 1px solid var(--line);
+    flex: 1 1 auto;
+    min-height: 130px;
+  }
+  /* 화면 속 오버레이 채팅은 모바일에서 숨김(옆 채팅과 중복·가독성) */
+  .overlay-chat { display: none; }
+
+  .below { padding: 10px 12px; }
+  .v-title { font-size: 14px; }
+  .v-meta { flex-wrap: wrap; gap: 6px; font-size: 12px; }
+
+  /* 커맨드바: 가로 스크롤 가능한 버튼 줄 */
+  .cmdbar { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .cmdbar button { flex: 0 0 auto; }
+  .objbar { font-size: 13px; padding: 8px 12px; }
+
+  /* 파일 탐색 창: 전체화면처럼, 목록 위 / 내용 아래 */
+  .screen.winbg { padding: 0; }
+  .frame.win { border-radius: 0; }
+  .win .main-row { flex-direction: column; }
+  .win .file-list, .file-list {
+    width: auto; max-height: 34vh; flex: 0 0 auto;
+    border-right: none; border-bottom: 1px solid #1a1a1a;
+    display: flex; flex-wrap: wrap; gap: 4px; padding: 8px;
+  }
+  .win .file-list button, .file-list button { width: auto; }
+  .file-view-wrap, .file-view, .desk-view { min-height: 0; }
+  .addr-row { font-size: 11px; }
+
+  /* 퍼즐/소스/메뉴: 세로 스택 + 큰 터치 타깃 */
+  .source-panel { width: auto; border-right: none; border-bottom: 1px solid var(--line); }
+  .opt-grid { flex-direction: column; }
+  .opt-grid button { width: 100%; padding: 14px; }
+  .menu-list { max-width: none; }
+  .menu-list button { padding: 14px 16px; }
+
+  /* 인트로 카드 */
+  .intro-card { max-width: 92vw; margin: 18px auto 0; padding: 20px; }
+  .intro-title { font-size: 24px; }
+
+  /* 토스트: 상단 가로 꽉 */
+  #toasts { top: 56px; left: 8px; right: 8px; }
+  .toast { max-width: none; }
+
+  /* 단서 패널: 화면 거의 전체 */
+  .clue-panel { top: 8px; right: 8px; left: 8px; width: auto; max-height: 80vh; }
+
+  /* 작업표시줄은 모바일에서 숨김(공간 확보) */
+  .taskbar { display: none !important; }
+
+  /* 자막 위치 — 영상 높이에 맞춤 */
+  .subtitle { font-size: 16px; bottom: 38px; max-width: 90%; }
+}
+
+/* 아주 좁은 폭(폰 세로) */
+@media (max-width: 480px) {
+  .v-chip { display: none; }
+  .ch-fol { display: none; }
+  .intro-title { font-size: 21px; letter-spacing: 1px; }
+}
+
+/* 터치 기기: 호버 단서가 안 통하므로 클릭 대상에 상시 약한 표식 */
+@media (hover: none) {
+  .chzzk-page .stage { cursor: default; }
+  #stream-timer, #viewer-count, #mic-gauge { text-decoration: underline dotted rgba(150,170,180,.4); }
+}

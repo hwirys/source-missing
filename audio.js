@@ -108,7 +108,10 @@ const AUDIO = (() => {
     const el = new Audio(`assets/voice/${encodeURIComponent(clean)}.mp3`);
     el.volume = vol;
     el.playbackRate = rate;
-    el.preservesPitch = false; // 느려지면 낮아진다
+    // 느리게 재생해도 음정(여성 음색)은 유지 — 남성처럼 내려가지 않게
+    el.preservesPitch = true;
+    el.mozPreservesPitch = true;
+    el.webkitPreservesPitch = true;
     el.play().catch(() => synthVoiceFragment(text.length));
     el.onerror = () => synthVoiceFragment(text.length);
   }

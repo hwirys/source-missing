@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOURCE MISSING — broadcaster: not found</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=East+Sea+Dokdo&family=Nanum+Myeongjo:wght@400;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── 부팅 화면 ───────────────────────────────────────── -->
+<div id="screen-boot" class="screen active">
+  <pre id="boot-log"></pre>
+  <button id="btn-enter" class="ghost-btn hidden">[ connect ]</button>
+</div>
+
+<!-- ── 라이브 화면 (치지직 페이지 구조) ─────────────────── -->
+<div id="screen-live" class="screen chzzk-page">
+  <div class="gnb">
+    <span class="gnb-logo">치지직</span>
+    <div class="gnb-search"><span>검색</span><span class="gnb-mag">⌕</span></div>
+    <div class="gnb-right">
+      <button class="gnb-btn">스튜디오</button>
+      <span class="gnb-avatar"></span>
+    </div>
+  </div>
+  <div class="page-row">
+    <aside class="lnb">
+      <div class="lnb-title">팔로잉</div>
+      <span class="lnb-ch live" title="쿠로네 언니"></span>
+      <span class="lnb-ch off"></span>
+      <span class="lnb-ch off"></span>
+      <span class="lnb-ch off"></span>
+    </aside>
+
+    <div class="content-col">
+      <div class="stage" id="stage">
+        <div id="bg-capture" class="bg-capture"></div>
+        <img id="figure-img" class="figure-img" src="assets/fig/fig_0.png"
+             alt="" onerror="this.style.display='none'">
+        <pre id="figure" class="figure"></pre>
+        <div id="overlay-chat" class="overlay-chat"></div>
+        <div id="subtitle" class="subtitle hidden"></div>
+        <div id="stage-caption" class="stage-caption">source: missing</div>
+        <div class="player-bar">
+          <span id="live-badge" class="pb-live">LIVE</span>
+          <span id="ctl-time">00:00:00</span>
+          <span class="pb-right">1080p&nbsp;&nbsp;⛶</span>
+        </div>
+        <div id="voice-overlay" class="voice-overlay hidden"></div>
+      </div>
+
+      <div class="below">
+        <div class="v-title clickable" id="stream-title">[괴담 라디오] 오늘도 잡담</div>
+        <div class="v-meta">
+          <span id="viewer-count" class="clickable">1명 시청 중</span>
+          <span class="v-dot">·</span>
+          <span id="stream-timer" class="clickable">00:00:00 스트리밍 중</span>
+          <span class="v-chip">talk</span>
+          <span class="v-chip">괴담</span>
+        </div>
+        <div class="ch-row">
+          <span class="ch-avatar"><span class="ch-live-dot"></span></span>
+          <div class="ch-info">
+            <div class="ch-name">쿠로네 언니</div>
+            <div class="ch-fol">팔로워 --명</div>
+          </div>
+          <button class="follow-btn">팔로잉</button>
+        </div>
+      </div>
+
+      <div class="statusbar" id="statusbar">
+        <span id="status-text">mic: no input | avatar: unstable | chat: connected</span>
+        <span id="mic-gauge" class="clickable" title="mic">▁▁▁▁</span>
+      </div>
+      <div class="objbar" id="objective">▸ 방송 화면을 관찰하세요</div>
+      <div class="cmdbar">
+        <button data-cmd="desktop" id="btn-desktop" class="locked">filesystem [locked]</button>
+        <button data-cmd="clues" id="btn-clues">traces (0)</button>
+        <button data-cmd="lastmsg" id="btn-lastmsg" class="hidden">last_message</button>
+        <button data-cmd="menu" id="btn-menu" class="hidden">SYSTEM MENU</button>
+        <button data-cmd="quit" class="danger">end_stream</button>
+      </div>
+    </div>
+
+    <div class="chat-panel">
+      <div class="chat-head">채팅<span class="chat-head-ico">👤 ⚙</span></div>
+      <div id="chat-log" class="chat-log"></div>
+      <div class="chat-input-row">
+        <input id="chat-input" type="text" maxlength="60"
+               placeholder="채팅을 입력해주세요" autocomplete="off">
+        <button id="btn-send">전송</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PC 파일 탐색 화면 ───────────────────────────────── -->
+<div id="screen-desktop" class="screen winbg">
+  <div class="frame win">
+    <div class="topbar"><span class="win-ico">▤</span><span class="path">C:\stream\Desktop\</span><span class="win-btns"><b>─</b><b>▢</b><b class="win-x" data-cmd="back">✕</b></span></div>
+    <div class="addr-row">
+      <span class="addr-nav">←&nbsp;&nbsp;→&nbsp;&nbsp;↑</span>
+      <input id="addr-input" class="addr-input" value="C:\stream\Desktop\" spellcheck="false">
+      <span class="addr-mag">⌕</span>
+    </div>
+    <div class="main-row">
+      <div class="file-list" id="desk-list"></div>
+      <div class="file-view-wrap">
+        <pre class="file-view" id="desk-view">select a file_</pre>
+        <div id="desk-actions" class="action-row"></div>
+      </div>
+    </div>
+    <div class="objbar" id="objective-desk">▸</div>
+    <div class="cmdbar">
+      <button data-cmd="back">← live</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── viewer_records 화면 ─────────────────────────────── -->
+<div id="screen-records" class="screen winbg">
+  <div class="frame win">
+    <div class="topbar"><span class="win-ico">▤</span><span class="path">C:\stream\Desktop\viewer_records\</span><span class="win-btns"><b>─</b><b>▢</b><b class="win-x" data-cmd="desktop">✕</b></span></div>
+    <div class="main-row">
+      <div class="file-list" id="file-list"></div>
+      <pre class="file-view" id="file-view">파일을 선택하세요.</pre>
+    </div>
+    <div class="objbar" id="objective-rec">▸</div>
+    <div class="cmdbar">
+      <button data-cmd="quiz" id="btn-quiz" class="hidden">cross-check records</button>
+      <button data-cmd="preserve" id="btn-preserve" class="hidden">preserve current.log</button>
+      <button data-cmd="desktop">← filesystem</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── ARCHIVE 화면 ────────────────────────────────────── -->
+<div id="screen-archive" class="screen winbg">
+  <div class="frame win">
+    <div class="topbar"><span class="win-ico">▤</span><span class="path">ARCHIVE / 반죽 기록</span><span class="win-btns"><b>─</b><b>▢</b><b class="win-x" data-cmd="desktop">✕</b></span></div>
+    <pre class="archive-view" id="archive-view"></pre>
+    <div class="cmdbar">
+      <button data-cmd="desktop">← filesystem</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 퍼즐 화면 (파싱 복원 / 기록 대조 공용) ──────────── -->
+<div id="screen-puzzle" class="screen winbg">
+  <div class="frame win">
+    <div class="topbar"><span class="win-ico">▤</span><span class="path" id="puzzle-path">parser_recovery.exe</span><span class="win-btns"><b>─</b><b>▢</b><b class="win-x" data-cmd="puzzle-exit">✕</b></span></div>
+    <pre class="file-view" id="puzzle-text"></pre>
+    <div id="puzzle-opts" class="opt-grid"></div>
+    <div class="objbar" id="objective-puz">▸</div>
+    <div class="cmdbar">
+      <button data-cmd="puzzle-next" id="btn-puzzle-next" class="hidden">next</button>
+      <button data-cmd="puzzle-exit" id="btn-puzzle-exit">close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── routine_queue 화면 ──────────────────────────────── -->
+<div id="screen-routine" class="screen winbg">
+  <div class="frame win">
+    <div class="topbar"><span class="win-ico">▤</span><span class="path">C:\stream\Desktop\routine_queue\</span><span class="win-btns"><b>─</b><b>▢</b><b class="win-x" data-cmd="desktop">✕</b></span></div>
+    <div class="main-row">
+      <div class="file-list" id="todo-list"></div>
+      <div class="file-view-wrap">
+        <pre class="file-view" id="todo-view">루틴은 서로를 다시 만든다.</pre>
+        <div id="todo-actions" class="action-row"></div>
+      </div>
+    </div>
+    <div class="objbar" id="objective-todo">▸</div>
+    <div class="cmdbar">
+      <button data-cmd="desktop">← filesystem</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 복원 화면 ───────────────────────────────────────── -->
+<div id="screen-restore" class="screen winbg">
+  <div class="frame win">
+    <div class="topbar"><span class="win-ico">▤</span><span class="path">RESTORE SOURCE — restore\restore_source.exe</span><span class="win-btns"><b>─</b><b>▢</b><b class="win-x" data-cmd="desktop">✕</b></span></div>
+    <div class="main-row">
+      <div class="source-panel" id="source-panel"></div>
+      <pre class="restore-log" id="restore-log"></pre>
+    </div>
+    <div class="objbar" id="objective-res">▸</div>
+    <div class="cmdbar">
+      <button data-cmd="restore-run" id="btn-restore-run">run restore</button>
+      <button data-cmd="desktop" id="btn-restore-back">← filesystem</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── SYSTEM MENU ─────────────────────────────────────── -->
+<div id="screen-menu" class="screen winbg">
+  <div class="frame win">
+    <div class="topbar"><span class="win-ico">▤</span><span class="path">SYSTEM MENU</span><span class="win-btns"><b>─</b><b>▢</b><b class="win-x" data-cmd="back">✕</b></span></div>
+    <pre class="file-view" id="menu-head"></pre>
+    <div id="menu-opts" class="menu-list"></div>
+    <div class="cmdbar">
+      <button data-cmd="back">← live</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 엔딩 화면 ───────────────────────────────────────── -->
+<div id="screen-ending" class="screen">
+  <pre id="ending-log"></pre>
+  <button id="btn-reconnect" class="ghost-btn hidden">[ reconnect ]</button>
+</div>
+
+<!-- ── 단서 노트 ───────────────────────────────────────── -->
+<div id="clue-panel" class="clue-panel hidden">
+  <div class="clue-head">traces <button id="btn-clue-close">×</button></div>
+  <div id="clue-list" class="clue-list">아직 단서가 없습니다.</div>
+</div>
+
+<div id="taskbar" class="taskbar">
+  <span class="task-start">⊞</span>
+  <span class="task-item">탐색기</span>
+  <span class="task-item dimmed">stream_overlay.exe</span>
+  <span class="task-clock">--:--<br>--/--/----</span>
+</div>
+
+<div id="vignette"></div>
+<div id="scanlines"></div>
+
+<script src="data.js"></script>
+<script src="audio.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

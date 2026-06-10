@@ -1,0 +1,6 @@
+# 배포 제외 — 원재료(원본 프레임/실제 댓글 덤프 포함)와 개발 부산물
+work/
+test/
+screenshots/
+nohup.out
+*.log

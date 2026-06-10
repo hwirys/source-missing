@@ -94,6 +94,7 @@ const state = {
   broadcastUntil: 0,
   broadcastCount: 0,
   ghostNoticed: false,   // 오버레이 유령 메시지 첫 인지
+  idleWarned: false,
 
   /* recordings + 추가 공포 */
   lungeUntil: 0,         // 한 프레임, 너무 가깝다
@@ -287,6 +288,7 @@ function startLive() {
   every(addrGhostTick, 4000);
   chatSys("채팅에 연결되었습니다.");
   later(() => toast("화면에서 어긋난 것을 찾아 클릭하세요"), 1200);
+  later(stuckNudge, 45000);
   if (save.runs >= 1) later(() => chatSys("returning_viewer detected."), 4000);
   updateObjective();
 }
@@ -335,9 +337,27 @@ const TITLES = [
   "[괴담 라디오] 오늘의 괴담: 시청자",
 ];
 
+function stuckNudge() {
+  if (state.ended || state.unlocked.desktop) return;
+  if (state.anoms.size === 0 && activeScreen() === "live") {
+    toast("멈춰 있는 숫자들을 눌러보세요 — 시간, 시청자 수", false);
+  } else if (state.anoms.size > 0 && state.anoms.size < 3) {
+    toast(`어긋난 곳 ${state.anoms.size}/3 — 마이크 게이지, 방송 제목도 살펴보세요`, false);
+  }
+}
+
 function titleDrift() {
-  if (state.ended) return;
+  if (state.ended || sceneLocked()) return;
   const el = $("#stream-title");
+  if (state.phase === 1) {
+    // 평범해 보이는 방송 — 드물게, 한 글자만 흔들렸다 곧 되돌아온다
+    if (Math.random() < 0.4) {
+      el.textContent = TITLES[1 + Math.floor(Math.random() * 3)];
+      state.titleDrifted = true;
+      later(() => { if (state.phase === 1) el.textContent = TITLES[0]; }, 1600);
+    }
+    return;
+  }
   const maxIdx = state.phase >= 3 ? TITLES.length : TITLES.length - 2;
   el.textContent = TITLES[Math.floor(Math.random() * maxIdx)];
   if (el.textContent !== TITLES[0]) state.titleDrifted = true;
@@ -433,6 +453,7 @@ function emptyRoomTick() {
   if (Math.random() > 0.3) return;
   const now = Date.now();
   if (now - state.lastEmptyAt < 90 * 1000) return;
+  if (now - state.lastActivity < 5000) return; // 조작 중엔 비우지 않는다
   state.lastEmptyAt = now;
 
   state.blackUntil = now + 22000;
@@ -472,6 +493,8 @@ function broadcastTick() {
   if (now < state.broadcastUntil || now < state.clipUntil) return;
   if (!nextBroadcastAt) { nextBroadcastAt = now + 35000; return; }
   if (now < nextBroadcastAt) return;
+  // 플레이어가 한창 조작 중이면 끼어들지 않는다 — 잠시 멈췄을 때 시작
+  if (now - state.lastActivity < 5000) { nextBroadcastAt = now + 6000; return; }
   nextBroadcastAt = now + 90000 + Math.random() * 50000;
   startFakeBroadcast();
 }
@@ -768,11 +791,16 @@ function restChatTick() {
   if (now < nextRestChatAt) return;
   nextRestChatAt = now + 20000 + Math.random() * 15000;
   chatAdd(pick(DATA.restChat));
-  state.energy = 5.5;
   state.restWindowUntil = now + 2600;
-  $("#figure").classList.add("glitch");
-  AUDIO.thump();
-  AUDIO.glitch(0.7);
+  if (state.phase >= 2) {
+    state.energy = 5.5;
+    $("#figure").classList.add("glitch");
+    AUDIO.thump();
+    AUDIO.glitch(0.7);
+  } else {
+    // phase 1: 형체가 살짝 흔들릴 뿐 — "방금 움직였나?"
+    state.energy = 2.2;
+  }
 }
 
 function chatStamp() {
@@ -1048,9 +1076,14 @@ function checkIdle() {
   if (state.watching && idle > 45 * 1000) {
     chatSys("반죽이 굳는 중.");
     later(() => runEnding("F"), 2500);
-  } else if (state.phase >= 3 && idle > 120 * 1000) {
+  } else if (state.phase >= 3 && idle > 165 * 1000 && !state.idleWarned) {
+    state.idleWarned = true;
     chatSys("반죽이 굳는 중.");
-    later(() => runEnding("F"), 2500);
+    toast("아무것도 하지 않으면, 그대로 기록됩니다", true);
+  } else if (state.phase >= 3 && idle > 195 * 1000) {
+    later(() => runEnding("F"), 1500);
+  } else if (idle < 10 * 1000) {
+    state.idleWarned = false;
   }
 }
 

@@ -406,7 +406,7 @@ body.shake .frame { animation: shake .18s linear; }
   cursor: pointer;
 }
 .opt-grid button:hover { border-color: var(--accent); color: var(--accent); }
-.opt-grid button.correct { border-color: var(--chat); color: var(--chat); }
+.opt-grid button.correct { border-color: #6b727a; color: #aab2b8; opacity: .65; }
 .opt-grid button.wrong { border-color: var(--warn); color: var(--warn); }
 
 /* ── 복원 소스 패널 ─────────────────────────── */

@@ -1482,7 +1482,7 @@ function startClipQuiz(clip) {
   puzzleCtx = {
     list: [{ id: clip.id, q: clip.q, opts: clip.opts, ans: clip.ans,
              success: clip.success, clue: clip.clue }],
-    idx: 0, mode: "clip", returnTo: "desktop",
+    idx: 0, mode: "clip", returnTo: "desktop", clipName: clip.name,
   };
   showScreen("puzzle");
   $("#puzzle-path").textContent = clip.name + " — 검토";
@@ -1521,26 +1521,28 @@ function renderPuzzle() {
   $("#btn-puzzle-next").classList.add("hidden");
 
   if (puzzleCtx.mode === "parser") {
-    const reqTag = p.req ? "[필수]" : "[선택]";
+    const redacted = p.fan.replace("____", "███");
     txt.textContent =
-`${reqTag} 복원 ${solvedReq()}/${DATA.puzzleReqCount} (필수 기준)
+`RECOVERY
 
-fan message (원문 손상):
-"${p.fan}"
+수신된 채팅
+  "${redacted}"
 
-system parsed:
-"${p.parsed}"
+기록된 채팅
+  "${p.parsed}"
 
-빠진 단어를 복원하세요.`;
+지워진 자리에 있던 말을 지정하라.`;
+  } else if (puzzleCtx.mode === "clip") {
+    txt.textContent = `REVIEW ── ${puzzleCtx.clipName || ""}\n\n${p.q}`;
   } else {
     txt.textContent = p.q;
   }
 
   const opts = $("#puzzle-opts");
   opts.innerHTML = "";
-  p.opts.forEach((o, i) => {
+  p.opts.forEach((o) => {
     const b = document.createElement("button");
-    b.textContent = `[${i + 1}] ${o}`;
+    b.textContent = o;
     b.addEventListener("click", () => answerPuzzle(p, o, b));
     opts.appendChild(b);
   });
@@ -1552,14 +1554,16 @@ function answerPuzzle(p, opt, btn) {
     btn.classList.add("wrong");
     btn.disabled = true;
     state.wrongParse++;
-    $("#puzzle-text").textContent += `\n\nparse failed. corruption +1`;
-    AUDIO.glitch(0.5);
+    $("#puzzle-text").textContent += `\n\n그건 거기 없었다.`;
+    AUDIO.glitch(0.6);
+    shakeFrame();
     return;
   }
   btn.classList.add("correct");
   $("#puzzle-opts").querySelectorAll("button").forEach((b) => (b.disabled = true));
   $("#puzzle-text").textContent += "\n\n" + p.success.join("\n");
-  AUDIO.tick();
+  AUDIO.glitch(0.35);
+  state.energy = Math.max(state.energy, 3);
 
   if (puzzleCtx.mode === "parser") {
     state.solvedPuzzles.add(p.id);
@@ -1578,7 +1582,7 @@ function answerPuzzle(p, opt, btn) {
     if (p.effect === "negation-rule") state.negationRule = true;
     if (p.id === "p3") state.endStreamHint = true;
     if (solvedReq() === DATA.puzzleReqCount) {
-      $("#puzzle-text").textContent += "\n\n→ 필수 복원 완료. routine_queue/ 로.";
+      $("#puzzle-text").textContent += "\n\n지워진 말은 전부 다시 입력됐다.";
     }
   } else if (puzzleCtx.mode === "clip") {
     state.clipsDone.add(p.id);

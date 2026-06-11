@@ -201,33 +201,33 @@ const DATA = {
   anomalies: {
     clock: {
       log: "anomaly detected: frozen clock",
-      clue: "LIVE 시간이 00:00:00에서 움직이지 않는다.",
-      next: "→ 멈춘 건 시간만이 아닐지도. 다른 숫자도 눌러보자.",
+      clue: "LIVE 시간이 00:00:00에서 멈춰 있다.",
+      next: "→ 멈춘 건 시간만이 아니다.",
     },
     viewers: {
       log: "anomaly detected: fixed viewer count",
-      clue: "시청자 수가 항상 1명. 그런데 채팅 치는 사람은 여럿이다.",
-      next: "→ 그럼 지금 '시청자'로 집계되는 1명은 누구지?",
+      clue: "시청자 수는 늘 1명. 채팅을 치는 사람은 여럿인데.",
+      next: "→ 집계된 1명. 그게 누구인지는 어디에도 없다.",
     },
     mic: {
       log: "anomaly detected: dead mic flutter",
-      clue: "음성 입력이 없는데(mic: no input) 마이크 게이지가 미세하게 떨린다.",
-      next: "→ 입력 없이 출력만 있는 소리. 출처가 따로 있다.",
+      clue: "mic: no input. 그런데 게이지가 미세하게 떨린다.",
+      next: "→ 입력은 없는데 출력이 있다. 출처가 따로 있다.",
     },
     motion: {
       log: "anomaly detected: motion delay",
-      clue: "형상은 채팅이 올라온 직후에만 흔들린다. 움직임의 출처는 채팅이다.",
-      next: "→ chat_motion_map.tmp 같은 파일이 있다면 거기 적혀 있을 것.",
+      clue: "형상은 채팅이 올라온 직후에만 흔들린다. 움직임은 채팅에서 온다.",
+      next: "→ 매핑은 chat_motion_map.tmp 에 남아 있다.",
     },
     title: {
       log: "anomaly detected: title drift",
-      clue: "방송 제목이 한 글자씩 바뀐다. 누군가 계속 다시 쓰고 있다.",
-      next: "→ 원본이 없으니 매번 새로 만드는 중인 것.",
+      clue: "제목이 한 글자씩 바뀐다. 계속 다시 쓰이고 있다.",
+      next: "→ 원본이 없다. 매번 새로 쓰는 중이다.",
     },
     rest: {
       log: "anomaly detected: rest keyword reaction",
-      clue: "\"쉬어도 돼\" 같은 채팅이 올라오면 형상이 오히려 더 크게 떨린다.",
-      next: "→ 시스템은 휴식이라는 단어를 싫어한다. 왜?",
+      clue: "\"쉬어\"가 올라오면 형상이 더 크게 흔들린다. 거부 반응처럼.",
+      next: "→ \"쉬어\"는 충돌로 처리된다. 시스템이 지운다.",
     },
   },
   anomalyNeed: 3,
@@ -349,22 +349,20 @@ notes
       type: "file",
       hidden: true,
       body:
-`복원하지 마.
-전부는.
+`전부 복원하지 마.
 
-chat_stream:           형상을 움직이게만 한다.
-반죽_records:          형상을 우리처럼 만든다.
-channel_archive_voice: 목소리를 흉내 낸다.
-routine_queue:         이것만은 절대.
-                       루틴을 복원하면 [rest]가 사라진다.
+chat_stream — 움직이기만 한다.
+반죽_records — 우리처럼 만든다.
+channel_archive_voice — 목소리를 흉내 낸다.
 
-쉬게 하고 싶다면 —
- 1. restore_source.exe에서 routine_queue를 빼.
- 2. rest_refusal.log를 읽어. (routine_queue/)
- 3. 시스템이 뭘 지우는지 확인해. (viewer_records 대조)
-그리고 SYSTEM MENU에서 [5] rest.
+routine_queue 만은 넣지 마.
+넣는 순간 rest 가 사라져.
+그 사람이 못 쉰 이유가 그거였어.
 
-이 파일을 쓴 사람은 기록에 없다.`,
+루틴을 끊고, 소리는 빼고, 보내 줘.
+
+나는 기록에 없다.
+나도 한때 시청자였다.`,
     },
     "returning_viewer.log": {
       type: "file",
@@ -578,7 +576,7 @@ test #4: (무제)               → 전송됨. 내용 없음.
       ans: "쉬어",
       success: ["context restored.", "keyword: rest", "", "rest keyword detected.", "routine_queue conflict increased."],
       clue: "팬은 \"쉬어도 돼요\"라고 썼다. 파서가 '쉬어'를 지웠다.",
-      next: "→ routine_queue/ 가 열렸다. 충돌이 늘어난 곳부터 보자.",
+      next: "→ routine_queue/ 열림. 충돌이 늘어난 곳부터.",
       effect: "unlock-routine",
     },
     {
@@ -608,7 +606,7 @@ test #4: (무제)               → 전송됨. 내용 없음.
       ans: "안",
       success: ["negation removed.", "routine distortion confirmed."],
       clue: "부정 표현이 지워진다. \"안 해도 돼\"는 \"해도 돼\"가 된다.",
-      next: "→ viewer_records의 original/displayed를 대조하면 같은 규칙이 보일 것.",
+      next: "→ viewer_records의 original/displayed에 같은 규칙이 남아 있다.",
       effect: "negation-rule",
     },
     {
@@ -681,12 +679,11 @@ test #4: (무제)               → 전송됨. 내용 없음.
 "짧게라도 켜야지."     → next_stream.todo 갱신됨
 "나중에 쉴게."         → rest_later.todo 보류됨
 
-거절은 항상 같은 순서로 일어났다.
-끊으려면 거꾸로 가야 한다:
+거절은 늘 같은 순서였다.
+잠 → 다음 방송 → 나중에.
+끊으려면, 그 역순으로.
 
-  잠(sleep) → 다음 방송(next) → 나중에(later)
-
-마지막 거절 기록: --:--  "이것만 끝나고"`,
+마지막 기록: --:--  "이것만 끝나고"`,
     },
     "sleep_after_this.todo": {
       body:

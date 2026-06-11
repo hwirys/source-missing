@@ -290,7 +290,7 @@ function startLive() {
   every(viewerTick, 9000);
   every(addrGhostTick, 4000);
   chatSys("채팅에 연결되었습니다.");
-  later(() => toast("화면에서 어긋난 것을 찾아 클릭하세요"), 1200);
+  later(() => toast("화면에서 어긋난 것을 클릭"), 1200);
   later(stuckNudge, 45000);
   if (save.runs >= 1) later(() => chatSys("returning_viewer detected."), 4000);
   updateObjective();
@@ -343,7 +343,7 @@ const TITLES = [
 function stuckNudge() {
   if (state.ended || state.unlocked.desktop) return;
   if (state.anoms.size === 0 && activeScreen() === "live") {
-    toast("멈춰 있는 숫자들을 눌러보세요 — 시간, 시청자 수");
+    toast("멈춰 있는 것들을 눌러보세요 — 시간, 시청자 수");
   } else if (state.anoms.size > 0 && state.anoms.size < 3) {
     toast(`어긋난 곳 ${state.anoms.size}/3 — 마이크 게이지, 방송 제목도 살펴보세요`, false);
   }
@@ -608,7 +608,7 @@ function collapseBroadcast(first) {
     later(() => chatAdd(pick(DATA.broadcast.reactEnd), "creep"), 1600);
     if (first) {
       addClue("방송이 '시작'됐다 — 진행자 없이. 오프닝은 대본에서 베꼈고, 도중에 막혀서 끊겼다.",
-        "→ 다음번엔 더 길게 한다. 본문 재료가 어디서 오는지 자막을 잘 볼 것.");
+        "→ 다음엔 더 길어진다. 본문의 출처는 자막에 드러난다.");
     } else if (state.echoes.length) {
       addClue("위장 방송의 본문은 우리가 했던 말이다 — 내 채팅도 괴담의 재료로 읽혔다.",
         "→ 채팅을 칠수록 저것의 대본이 길어진다.");
@@ -706,7 +706,7 @@ function foundAnomaly(key, el) {
     state.unlocked.desktop = true;
     later(() => {
       chatSys("desktop access partially restored.");
-      toast("filesystem 잠금 해제");
+      toast("filesystem unlocked");
       const b = $("#btn-desktop");
       b.classList.remove("locked");
       b.textContent = "filesystem";
@@ -723,7 +723,7 @@ $("#viewer-count").addEventListener("click", function () { foundAnomaly("viewers
 $("#mic-gauge").addEventListener("click", function () { foundAnomaly("mic", this); });
 $("#stream-title").addEventListener("click", function () {
   if (state.titleDrifted) foundAnomaly("title", this);
-  else chatSys("(제목은… 평범해 보인다. 조금 더 지켜보자.)");
+  else chatSys("(제목은 아직 그대로다.)");
 });
 $("#stage").addEventListener("mousemove", (e) => {
   const f = $("#figure-img");
@@ -747,7 +747,7 @@ $("#stage").addEventListener("click", () => {
   if (now < state.restWindowUntil) foundAnomaly("rest", null);
   else if (now - state.lastChatAt < 1500) foundAnomaly("motion", null);
   else if (!state.anoms.has("motion"))
-    chatSys("(지금은 가만히 있다 — 채팅이 올라온 직후를 노려보자.)");
+    chatSys("(지금은 움직이지 않는다.)");
 });
 
 /* ── 단계 ──────────────────────────────────────────────── */
@@ -1126,7 +1126,7 @@ function handleCmd(cmd) {
   state.lastActivity = Date.now();
   switch (cmd) {
     case "desktop":
-      if (!state.unlocked.desktop) { chatSys("filesystem: locked. (이상 현상 3개 필요)"); return; }
+      if (!state.unlocked.desktop) { chatSys("filesystem: access denied"); return; }
       $("#btn-desktop").classList.remove("new");
       openDesktop(); break;
     case "clues": $("#clue-panel").classList.toggle("hidden"); renderClues(); break;
@@ -1293,7 +1293,7 @@ function openDeskEntry(e) {
     if (!state.alertFailRead) {
       state.alertFailRead = true;
       addClue("휴식 관련 알림만 모두 전송에 실패했다. 파서가 휴식 단어를 지우고 있다.",
-        "→ parser_recovery.exe 로 어떤 단어가 지워졌는지 직접 복원할 수 있다.");
+        "→ parser_recovery.exe — 지워진 단어를 복원한다.");
     }
     return;
   }
@@ -1328,7 +1328,7 @@ function openDeskEntry(e) {
     setDeskView(f.body, true);
     if (!state.dnrRead) {
       state.dnrRead = true;
-      addClue("do_not_restore.txt — 휴식 엔딩 조건표: routine_queue를 복원 소스에서 뺄 것.",
+      addClue("do_not_restore.txt — rest의 조건. routine_queue는 복원 소스에서 제외.",
         "→ 조건이 다 모이면 SYSTEM MENU의 [5] rest 가 열린다.");
       renderDesk();
       updateObjective();
@@ -1371,7 +1371,7 @@ status: returned
         chatSys("alert_test/ unlocked.");
       }
       addClue("output source는 chat_stream — 형상은 채팅으로 움직인다. 그리고 \"쉬어\"만 음수 가중치.",
-        "→ alert_test/ 가 열렸다. 왜 '쉬어'가 충돌인지 그 안에 기록이 있다.");
+        "→ alert_test/ 열림. '쉬어'가 왜 충돌인지 거기 기록돼 있다.");
       renderDesk();
       openDeskEntry(e); // 액션 done 상태로 다시 그림
       updateObjective();
@@ -1414,9 +1414,9 @@ function markFanBroken(idx, viaPuzzle) {
   if (state.fanBroken.size >= 3 && !state.unlocked.records) {
     state.unlocked.records = true;
     chatSys("viewer_records/ unlocked.");
-    toast("viewer_records/ 잠금 해제");
+    toast("viewer_records/ unlocked");
     addClue("깨진 시간대 3곳 모두 '쉬라'는 말이 있던 자리였다.",
-      "→ viewer_records/ 가 열렸다. 이전 반죽이들의 원문도 저렇게 잘렸는지 대조해 보자.");
+      "→ viewer_records/ 열림. 이전 기록의 원문도 같은 식으로 잘려 있다.");
   }
   updateObjective();
 }
@@ -1571,7 +1571,7 @@ function answerPuzzle(p, opt, btn) {
     if (p.effect === "unlock-routine" && !state.unlocked.routine) {
       state.unlocked.routine = true;
       chatSys("routine_queue/ unlocked.");
-      toast("routine_queue/ 잠금 해제");
+      toast("routine_queue/ unlocked");
       // 시스템의 불쾌한 반응
       later(() => { state.energy = 5; AUDIO.glitch(0.8); }, 600);
     }
@@ -1621,7 +1621,7 @@ function finishQuiz() {
   state.quizDone = true;
   chatSys("distortion rule detected.");
   // 숨은 기록 해금
-  chatSys("viewer_records: 숨은 기록 2개가 나타났습니다.");
+  chatSys("viewer_records: +2 entries");
 }
 
 /* ── Block 4: routine_queue ───────────────────────────── */
@@ -1685,10 +1685,10 @@ function openTodo(name) {
       state.restRefusalRead = true;
       if (state.routineStep < 2) state.routineStep = 2;
       addClue("거절 순서: 이것만 끝나고(잠) → 짧게라도(다음 방송) → 나중에. 끊으려면 이 순서대로 처리.",
-        "→ sleep_after_this → next_stream → rest_later 순서로 액션을 누를 것.");
+        "→ 순서: sleep_after_this → next_stream → rest_later");
       if (!state.dnrVisible) {
         state.dnrVisible = true;
-        chatSys("Desktop: 숨겨져 있던 파일이 보이게 되었습니다.");
+        chatSys("Desktop: new file");
       }
       updateObjective();
     }
@@ -1797,9 +1797,9 @@ function openRecords() {
         if (state.recViewed.size >= 2 && !state.unlocked.restore) {
           state.unlocked.restore = true;
           chatSys("restore/ unlocked.");
-          toast("restore/ 잠금 해제");
+          toast("restore/ unlocked");
           addClue("기록 2개 대조 — original에서 '쉬세요/하지 마' 부분만 사라져 있다.",
-            "→ 3개째를 보고 [기록 대조] 로 규칙을 확정하자. restore/ 도 열렸다.");
+            "→ 기록 3개째. [기록 대조]로 규칙이 드러난다. restore/ 열림.");
         }
         if (state.recViewed.size >= 3 && !state.quizDone) $("#btn-quiz").classList.remove("hidden");
       } else {
@@ -1937,7 +1937,7 @@ function finishRestoreRun() {
 
   if (state.restore >= 60 && !state.dnrVisible) {
     state.dnrVisible = true;
-    chatSys("Desktop: do_not_restore.txt 가 나타났습니다.");
+    chatSys("Desktop: do_not_restore.txt");
   }
   if (state.routineSourceUsed) {
     addClue("routine_queue를 소스로 복원했다. 형상이 채팅 없이도 흔들린다. rest가 거부된다.",

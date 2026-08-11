@@ -397,6 +397,7 @@ button:focus-visible, input:focus-visible, .clickable:focus-visible, .stage:focu
 .cmdbar button.locked { color: var(--dim); cursor: not-allowed; }
 .cmdbar button:disabled { opacity: .48; cursor: not-allowed; transform: none; }
 .cmdbar button.new { border-color: var(--accent); color: var(--accent); }
+.mobile-search-trigger { display: none; }
 
 /* ── viewer_records ─────────────────────────── */
 .file-list {
@@ -1474,6 +1475,21 @@ body.in-windows .taskbar { display: flex; }
   .lnb { display: none; }              /* 좁은 화면에선 사이드바 숨김 */
   .gnb { height: 48px; padding: 0 12px; gap: 12px; }
   .gnb-search-wrap { display: none; }
+  .gnb-search-wrap.mobile-open {
+    display: block;
+    position: fixed;
+    top: 54px;
+    left: 8px;
+    right: 8px;
+    z-index: 90;
+    width: auto;
+    max-width: none;
+  }
+  .gnb-search-wrap.mobile-open .gnb-search {
+    background: rgba(24,25,27,.99);
+    box-shadow: 0 10px 36px rgba(0,0,0,.75);
+  }
+  .gnb-search-wrap.mobile-open .search-rest-result { width: 100%; max-width: none; }
   .gnb-nav { display: none; }
   .gnb-icon, .gnb-avatar { display: none; }
   .gnb-logo { font-size: 18px; }
@@ -1516,6 +1532,7 @@ body.in-windows .taskbar { display: flex; }
   /* 커맨드바: 가로 스크롤 가능한 버튼 줄 */
   .cmdbar { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .cmdbar button { flex: 0 0 auto; }
+  .mobile-search-trigger { display: inline-block; }
   .objbar { font-size: 13px; padding: 8px 12px; }
 
   /* 파일 탐색 창: 전체화면처럼, 목록 위 / 내용 아래 */

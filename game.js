@@ -376,7 +376,7 @@ function loadCheckpoint() {
 function showScreen(name) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
   $("#screen-" + name).classList.add("active");
-  if (name !== "live") $("#search-rest-result").classList.add("hidden");
+  if (name !== "live") closePlatformSearch();
   document.body.classList.toggle("in-windows", WIN_SCREENS.has(name));
   // 화면 인지 채팅 — 어디를 보는지 채팅이 안다 (라이브로 돌아오면 보게 된다)
   if (state.phase >= 2 && !state.ended && !state.endingPending && DATA.screenAware[name] && Math.random() < 0.45) {
@@ -591,7 +591,7 @@ $("#btn-follow").addEventListener("click", () => {
 });
 $("#platform-search").addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
-    $("#search-rest-result").classList.add("hidden");
+    closePlatformSearch();
     return;
   }
   if (e.key !== "Enter") return;
@@ -607,6 +607,11 @@ $("#platform-search").addEventListener("keydown", (e) => {
   toast(`“${query}” 검색 결과가 없습니다`, true);
   e.currentTarget.select();
 });
+
+function closePlatformSearch() {
+  $("#search-rest-result").classList.add("hidden");
+  $(".gnb-search-wrap").classList.remove("mobile-open");
+}
 
 function revealRestSearch(input) {
   const result = $("#search-rest-result");
@@ -640,8 +645,7 @@ function revealRestSearch(input) {
 }
 
 $("#btn-search-result-close").addEventListener("click", () => {
-  $("#search-rest-result").classList.add("hidden");
-  $("#platform-search").focus();
+  closePlatformSearch();
 });
 
 $("#btn-search-rest").addEventListener("click", (event) => {
@@ -1632,6 +1636,10 @@ function handleCmd(cmd) {
       $("#btn-desktop").classList.remove("new");
       openDesktop(); break;
     case "clues": $("#clue-panel").classList.toggle("hidden"); renderClues(); break;
+    case "search":
+      $(".gnb-search-wrap").classList.add("mobile-open");
+      $("#platform-search").focus();
+      break;
     case "back": showScreen("live"); break;
     case "quit": attemptEndStream(); break;
     case "lastmsg": armLastMessage(); break;

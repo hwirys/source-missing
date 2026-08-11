@@ -1063,6 +1063,42 @@ body.in-windows .taskbar { display: flex; }
   border-top: 1px solid #242629;
   box-shadow: inset 3px 0 0 rgba(0,248,137,.55);
 }
+.progress-panel { padding: 8px 18px 4px; }
+.progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--dim);
+  font: 700 10.5px var(--font-sans);
+  letter-spacing: .35px;
+}
+#progress-chapter { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#progress-percent { color: var(--chzzk); font-size: 12px; }
+.progress-track {
+  position: relative;
+  height: 5px;
+  margin-top: 6px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #292b2e;
+}
+.progress-track i {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #00c978, var(--chzzk));
+  box-shadow: 0 0 10px rgba(0,248,137,.35);
+  transition: width .45s ease;
+}
+.progress-track span {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: rgba(8,10,11,.7);
+}
 .statusbar { background: transparent; border-top: none; font-size: 12px; padding: 7px 18px 2px; }
 .console-label {
   color: var(--chzzk);
@@ -1072,7 +1108,24 @@ body.in-windows .taskbar { display: flex; }
 }
 #status-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #mic-gauge { margin-left: auto; flex: 0 0 auto; }
-.objbar { background: transparent; border-top: none; padding: 7px 18px 0; }
+.objbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(90deg,
+    rgba(0,248,137,.08) 0 var(--case-progress, 0%),
+    transparent var(--case-progress, 0%) 100%);
+  border-top: none;
+  padding: 7px 18px 0;
+}
+.objbar::after {
+  content: attr(data-progress);
+  margin-left: auto;
+  color: var(--chzzk);
+  font: 800 11px var(--font-sans);
+  letter-spacing: .2px;
+}
+.investigation-console .objbar::after { display: none; }
 .cmdbar { border-top: none; padding: 8px 16px 12px; gap: 8px; }
 .cmdbar button { transition: background .15s, transform .12s; }
 .cmdbar button:hover { transform: translateY(-1px); }
@@ -1221,6 +1274,7 @@ body.in-windows .taskbar { display: flex; }
   .ch-row { margin-top: 10px; }
   .ch-avatar { width: 38px; height: 38px; }
   .investigation-console { box-shadow: inset 2px 0 0 rgba(0,248,137,.55); }
+  .progress-panel { padding: 7px 12px 3px; }
   .statusbar { padding: 7px 12px 2px; }
   .console-label { display: none; }
 

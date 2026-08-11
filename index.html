@@ -104,6 +104,17 @@
       </div>
 
       <div class="investigation-console">
+        <div class="progress-panel" aria-label="조사 진행도">
+          <div class="progress-head">
+            <span id="progress-chapter">CHAPTER 1 · 방송 관찰</span>
+            <strong id="progress-percent">0%</strong>
+          </div>
+          <div id="progress-track" class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <i id="progress-fill"></i>
+            <span style="left:20%"></span><span style="left:40%"></span>
+            <span style="left:60%"></span><span style="left:80%"></span>
+          </div>
+        </div>
         <div class="statusbar" id="statusbar">
           <span class="console-label">SOURCE MONITOR</span>
           <span id="status-text">mic: no input | avatar: unstable | chat: connected</span>

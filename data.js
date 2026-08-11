@@ -230,7 +230,7 @@ const DATA = {
       next: "→ \"쉬어\"는 충돌로 처리된다. 시스템이 지운다.",
     },
   },
-  anomalyNeed: 3,
+  anomalyNeed: 2,
 
   /* ── Block 2: 파일 탐색 ───────────────────────────────── */
   files: {
@@ -566,7 +566,7 @@ test #4: (무제)               → 전송됨. 내용 없음.
   ],
 
   /* ── Block 3: 채팅 파싱 복원 퍼즐 ─────────────────────── */
-  /* req: 1회차 필수 6개 / 나머지는 선택 */
+  /* req: 1회차 핵심 3개 / 나머지는 선택 */
   puzzles: [
     {
       id: "p1", req: true,
@@ -594,12 +594,12 @@ test #4: (무제)               → 전송됨. 내용 없음.
       parsed: "방송 괜찮아",
       opts: ["켜도", "꺼도", "늦어도", "없어도"],
       ans: "꺼도",
-      success: ["removed phrase detected: \"꺼도\"", "end_stream permission hint updated."],
+      success: ["removed phrase detected: \"꺼도\"", "end_stream permission hint updated.", "", "parser_recovery: 핵심 복원 완료."],
       clue: "\"꺼도\"가 지워졌다. 방송을 끄는 것도 원래는 허락받은 일이었다.",
       next: "→ SYSTEM MENU의 end_stream은 죄책감 없이 골라도 된다는 뜻.",
     },
     {
-      id: "p4", req: true,
+      id: "p4",
       fan: "아무것도 ____ 해도 돼",
       parsed: "해도 돼",
       opts: ["안", "다", "더", "잘"],
@@ -610,7 +610,7 @@ test #4: (무제)               → 전송됨. 내용 없음.
       effect: "negation-rule",
     },
     {
-      id: "p5", req: true,
+      id: "p5",
       fan: "무리 ____",
       parsed: "무리",
       opts: ["하지 마", "해도 돼", "할 만해", "중"],
@@ -619,12 +619,12 @@ test #4: (무제)               → 전송됨. 내용 없음.
       clue: "\"하지 마\"가 잘리면 \"무리\"만 남는다. 명령이 반대가 된다.",
     },
     {
-      id: "p6", req: true,
+      id: "p6",
       fan: "이제 ____ 일해",
       parsed: "이제 일해",
       opts: ["그만", "같이", "더", "천천히"],
       ans: "그만",
-      success: ["stop-word removed.", "routine parser confirmed.", "", "parser_recovery: 필수 복원 완료."],
+      success: ["stop-word removed.", "routine parser confirmed.", "optional record restored."],
       clue: "'그만'도 지워진다. 멈추라는 말은 시스템에 도달하지 않는다.",
       next: "→ 이 파서가 도는 곳: routine_queue/. 끊으려면 rest_refusal.log부터.",
     },
@@ -666,7 +666,7 @@ test #4: (무제)               → 전송됨. 내용 없음.
       clue: "쉬는 동사는 저장조차 되지 않는다.",
     },
   ],
-  puzzleReqCount: 6,
+  puzzleReqCount: 3,
 
   /* ── Block 4: routine_queue ───────────────────────────── */
   todos: {

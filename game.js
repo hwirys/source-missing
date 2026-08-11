@@ -73,6 +73,7 @@ const state = {
   watching: false,
   ended: false,
   timers: [],
+  progressAnnounced: 0,
 
   /* 공포 연출 상태 */
   blackUntil: 0,        // 형상 프레임 드랍
@@ -117,6 +118,8 @@ function every(fn, ms) { const id = setInterval(fn, ms); state.timers.push(id); 
 function clearTimers() { state.timers.forEach((id) => { clearTimeout(id); clearInterval(id); }); state.timers = []; }
 
 const WIN_SCREENS = new Set(["desktop", "records", "archive", "puzzle", "routine", "restore", "menu"]);
+const RECORD_VIEW_NEED = 2;
+const CLIP_REVIEW_NEED = 2;
 
 function showScreen(name) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
@@ -205,11 +208,55 @@ function solvedReq() {
   return DATA.puzzles.filter((p) => p.req && state.solvedPuzzles.has(p.id)).length;
 }
 
+function progressSnapshot() {
+  const ratio = (value, need) => Math.min(1, value / need);
+  const percent = Math.round(
+    ratio(state.anoms.size, DATA.anomalyNeed) * 12 +
+    (state.mapConfirmed ? 10 : 0) +
+    ratio(solvedReq(), DATA.puzzleReqCount) * 15 +
+    (state.routineCleared ? 15 : 0) +
+    ratio(state.recViewed.size, RECORD_VIEW_NEED) * 10 +
+    (state.quizDone ? 10 : 0) +
+    ratio(state.clipsDone.size, CLIP_REVIEW_NEED) * 10 +
+    (state.restoreRan ? 10 : 0) +
+    (state.dnrRead ? 8 : 0));
+
+  let chapter = "CHAPTER 1 · 방송 관찰";
+  if (state.unlocked.desktop) chapter = "CHAPTER 2 · 신호 복구";
+  if (state.mapConfirmed && solvedReq() >= DATA.puzzleReqCount) chapter = "CHAPTER 3 · 루틴 중단";
+  if (state.routineCleared) chapter = "CHAPTER 4 · 기록 대조";
+  if (state.quizDone && state.clipsDone.size >= CLIP_REVIEW_NEED) chapter = "CHAPTER 5 · 소스 복원";
+  if (state.restoreRan && state.dnrRead) chapter = "FINAL · 마지막 선택";
+  return { percent: Math.min(100, percent), chapter };
+}
+
+function updateProgress() {
+  const p = progressSnapshot();
+  const fill = $("#progress-fill");
+  if (fill) fill.style.width = p.percent + "%";
+  if ($("#progress-percent")) $("#progress-percent").textContent = p.percent + "%";
+  if ($("#progress-chapter")) $("#progress-chapter").textContent = p.chapter;
+  if ($("#progress-track")) $("#progress-track").setAttribute("aria-valuenow", String(p.percent));
+
+  document.querySelectorAll(".objbar").forEach((e) => {
+    e.style.setProperty("--case-progress", p.percent + "%");
+    e.dataset.progress = p.percent + "%";
+  });
+
+  const bucket = Math.floor(p.percent / 20);
+  if (state.liveStart && bucket > state.progressAnnounced) {
+    state.progressAnnounced = bucket;
+    const label = p.percent >= 100 ? "조사 완료 · 마지막 선택이 열렸습니다" : `조사 진행 ${bucket * 20}% · ${p.chapter}`;
+    toast(label);
+    AUDIO.ui("confirm");
+  }
+}
+
 function computeObjective() {
   if (state.ended) return "\u2014";
   if (state.watching) return "\u2014";
   if (!state.unlocked.desktop)
-    return `\uc5b4\uae0b\ub09c \uacf3 (${state.anoms.size}/3)`;
+    return `\uc5b4\uae0b\ub09c \uacf3 (${state.anoms.size}/${DATA.anomalyNeed})`;
   if (!state.mapConfirmed) return "\uc6c0\uc9c1\uc784\uc758 \ucd9c\ucc98";
   if (solvedReq() === 0) return "alert_test/";
   if (state.fanBroken.size < 3)
@@ -218,11 +265,11 @@ function computeObjective() {
     return `\ubcf5\uc6d0 ${solvedReq()}/${DATA.puzzleReqCount}`;
   if (!state.routineCleared)
     return state.routineFails >= 4 ? "rest_refusal.log \u2014 \uac70\uafb8\ub85c" : "\ub8e8\ud2f4";
-  if (state.recViewed.size < 3)
-    return `\uae30\ub85d (${state.recViewed.size}/3)`;
+  if (state.recViewed.size < RECORD_VIEW_NEED)
+    return `\uae30\ub85d (${state.recViewed.size}/${RECORD_VIEW_NEED})`;
   if (!state.quizDone) return "\ubb34\uc5c7\uc774 \uc9c0\uc6cc\uc9c0\ub294\uac00";
-  if (state.mapConfirmed && state.clipsDone.size < DATA.clips.length)
-    return `\uc798\ub9b0 \ub05d (${state.clipsDone.size}/${DATA.clips.length})`;
+  if (state.mapConfirmed && state.clipsDone.size < CLIP_REVIEW_NEED)
+    return `\uc798\ub9b0 \ub05d (${state.clipsDone.size}/${CLIP_REVIEW_NEED})`;
   if (!state.restoreRan) return "\uc804\ubd80 \ubcf5\uc6d0\ud558\uc9c0 \ub9d0 \uac83";
   if (state.dnrVisible && !state.dnrRead) return "\uc228\uae40 \ud30c\uc77c";
   return "\ub9c8\uc9c0\ub9c9 \uc120\ud0dd";
@@ -232,6 +279,7 @@ function updateObjective() {
   const o = computeObjective();
   const t = o === "\u2014" ? "\u2014" : "할 일 ▸ " + o;
   document.querySelectorAll(".objbar").forEach((e) => (e.textContent = t));
+  updateProgress();
 }
 
 /* ── 부팅 ──────────────────────────────────────────────── */
@@ -380,8 +428,8 @@ function stuckNudge() {
   if (state.ended || state.unlocked.desktop) return;
   if (state.anoms.size === 0 && activeScreen() === "live") {
     toast("멈춰 있는 것들을 눌러보세요 — 시간, 시청자 수");
-  } else if (state.anoms.size > 0 && state.anoms.size < 3) {
-    toast(`어긋난 곳 ${state.anoms.size}/3 — 마이크 게이지, 방송 제목도 살펴보세요`, false);
+  } else if (state.anoms.size > 0 && state.anoms.size < DATA.anomalyNeed) {
+    toast(`어긋난 곳 ${state.anoms.size}/${DATA.anomalyNeed} — 마이크 게이지, 방송 제목도 살펴보세요`, false);
   }
 }
 
@@ -1374,7 +1422,7 @@ function openDeskEntry(e) {
     switch (f.open) {
       case "alert": deskDir = "alert"; renderDesk(); setDeskView("alert_test/\n\n알림 테스트 기록과 파서 복구 도구."); return;
       case "scripts": deskDir = "scripts"; renderDesk(); setDeskView("stream_scripts/\n\n괴담 라디오 대본 폴더.\n매주 두 편씩, 빠짐없이 쌓여 있다."); return;
-      case "recordings": deskDir = "recordings"; renderDesk(); setDeskView(`recordings/\n\n잘려나간 다시보기 조각 ${DATA.clips.length}개.\n검토: ${state.clipsDone.size}/${DATA.clips.length}`); return;
+      case "recordings": deskDir = "recordings"; renderDesk(); setDeskView(`recordings/\n\n잘려나간 다시보기 조각 ${DATA.clips.length}개.\n핵심 검토: ${Math.min(state.clipsDone.size, CLIP_REVIEW_NEED)}/${CLIP_REVIEW_NEED}\n(나머지는 선택 기록)`); return;
       case "records": openRecords(); return;
       case "routine": openRoutine(); return;
       case "restore": openRestore(); return;
@@ -1516,8 +1564,9 @@ function renderFanlog() {
 
 function playClip(clip) {
   showScreen("live");
-  const lineGap = 1800;
-  const dur = 1300 + clip.lines.length * lineGap + 1200;
+  const lineGap = 1200;
+  const introDelay = 900;
+  const dur = introDelay + clip.lines.length * lineGap + 900;
   state.clipUntil = Date.now() + dur;
 
   setStageBg("bg_live2");
@@ -1526,10 +1575,10 @@ function playClip(clip) {
   AUDIO.radioTune(1.2);
 
   clip.lines.forEach((l, i) => {
-    later(() => { if (!state.ended) showSubtitle(l); }, 1300 + i * lineGap);
+    later(() => { if (!state.ended) showSubtitle(l); }, introDelay + i * lineGap);
   });
   // 녹화 특유의 흐릿한 음성 잔재
-  later(() => AUDIO.voice("아", 0.22, 0.9, true), 1300 + lineGap);
+  later(() => AUDIO.voice("아", 0.22, 0.9, true), introDelay + lineGap);
 
   later(() => {
     if (state.ended) return;
@@ -1558,16 +1607,20 @@ function startClipQuiz(clip) {
 let puzzleCtx = null;
 
 function startParser() {
-  const remaining = DATA.puzzles.filter((p) => !state.solvedPuzzles.has(p.id));
-  if (!remaining.length) {
+  const unsolved = DATA.puzzles.filter((p) => !state.solvedPuzzles.has(p.id));
+  if (!unsolved.length) {
     setDeskView("parser_recovery.exe\n\n복원 가능한 항목이 없습니다.\n전체 복원 완료.");
     return;
   }
-  // 필수 먼저, 그다음 선택
-  remaining.sort((a, b) => (b.req ? 1 : 0) - (a.req ? 1 : 0));
+  // 첫 실행은 핵심 복구만 묶는다. 선택 기록은 다시 실행했을 때만 나온다.
+  const required = unsolved.filter((p) => p.req);
+  const remaining = required.length ? required : unsolved;
+  const optional = required.length === 0;
   puzzleCtx = { list: remaining, idx: 0, mode: "parser", returnTo: "desktop" };
   showScreen("puzzle");
-  $("#puzzle-path").textContent = "parser_recovery.exe — 채팅 파싱 복원";
+  $("#puzzle-path").textContent = optional
+    ? "parser_recovery.exe — 선택 기록 복원"
+    : `parser_recovery.exe — 핵심 복원 ${remaining.length}건`;
   renderPuzzle();
   updateObjective();
 }
@@ -1648,14 +1701,14 @@ function answerPuzzle(p, opt, btn) {
     if (p.effect === "negation-rule") state.negationRule = true;
     if (p.id === "p3") state.endStreamHint = true;
     if (solvedReq() === DATA.puzzleReqCount) {
-      $("#puzzle-text").textContent += "\n\n지워진 말은 전부 다시 입력됐다.";
+      $("#puzzle-text").textContent += "\n\n핵심 복원 완료. 나머지 손상 기록은 선택 사항이다.";
     }
   } else if (puzzleCtx.mode === "clip") {
     state.clipsDone.add(p.id);
     if (p.clue) addClue(p.clue);
-    if (state.clipsDone.size === DATA.clips.length) {
+    if (state.clipsDone.size === CLIP_REVIEW_NEED) {
       later(() => {
-        toast("recordings: 모든 클립 검토 완료");
+        toast("recordings: 핵심 클립 검토 완료");
         AUDIO.voice("기다려", 0.3, 0.85, true);
         addClue(DATA.clipsAllClue.text, DATA.clipsAllClue.next);
       }, 900);
@@ -1875,9 +1928,9 @@ function openRecords() {
           chatSys("restore/ unlocked.");
           toast("restore/ unlocked");
           addClue("기록 2개 대조 — original에서 '쉬세요/하지 마' 부분만 사라져 있다.",
-            "→ 기록 3개째. [기록 대조]로 규칙이 드러난다. restore/ 열림.");
+            "→ 필요한 대조가 모였다. [기록 대조]로 규칙을 확정한다. restore/ 열림.");
         }
-        if (state.recViewed.size >= 3 && !state.quizDone) $("#btn-quiz").classList.remove("hidden");
+        if (state.recViewed.size >= RECORD_VIEW_NEED && !state.quizDone) $("#btn-quiz").classList.remove("hidden");
       } else {
         AUDIO.glitch(0.5);
       }
@@ -1886,7 +1939,7 @@ function openRecords() {
     list.appendChild(b);
   });
   $("#file-view").textContent = "파일을 선택하세요.\n(original_message 와 displayed_as 를 비교할 것)";
-  if (state.recViewed.size >= 3 && !state.quizDone) $("#btn-quiz").classList.remove("hidden");
+  if (state.recViewed.size >= RECORD_VIEW_NEED && !state.quizDone) $("#btn-quiz").classList.remove("hidden");
   else $("#btn-quiz").classList.add("hidden");
   updateObjective();
 }

@@ -25,7 +25,7 @@ python3 -m http.server 8000
 | `index.html` | 화면 구조 (부팅/라이브/PC탐색/기록/아카이브/퍼즐/루틴/복원/메뉴/엔딩) |
 | `style.css` | ASCII·CRT 분위기 스타일 |
 | `data.js` | 채팅 풀, 이상 현상, 파일 시스템, 파싱 퍼즐 10종, 루틴 큐, 기록, 엔딩 텍스트 |
-| `audio.js` | Web Audio 합성 룸톤·글리치·음성 파편 (assets 파일 우선) |
+| `audio.js` | Web Audio 룸톤·글리치·AI 음성 후처리·상태별 상호작용음 (assets 파일 우선) |
 | `game.js` | 7블록 진행, 해금 체인, 목표 바, 단서 노트, 형상 렌더러, NG+, 엔딩 분기 |
 | `test/chain-test.js` | 헤드리스 전체 진행 검증 (`npm i jsdom@22` 후 `node test/chain-test.js`) |
 
@@ -34,7 +34,7 @@ python3 -m http.server 8000
 1. **방송 관찰** — 이상 현상 6종 중 3개를 클릭해 발견 → filesystem 해금
 2. **filesystem 탐색** — 잠긴 폴더마다 해금 조건이 힌트로 표시됨
 3. **채팅 파싱 복원** — `parser_recovery.exe`, 필수 6 + 선택 4 퍼즐
-4. **routine_queue 해제** — `rest_refusal.log`의 거절 순서를 거꾸로 (잠→다음 방송→나중에). 틀리면 새 작업이 생성되고 실패 카운트가 쌓임
+4. **routine_queue 해제** — `rest_refusal.log`에 쌓인 순서대로 (잠→다음 방송→나중에) 무효화. 틀리면 새 작업이 생성되고 실패 카운트가 쌓임
 5. **반죽이 기록 대조** — original/displayed 비교 → 왜곡 규칙 추론 퀴즈
 6. **recordings/ 클립 검토** — 잘려나간 다시보기 3개를 재생하고 어긋난 점을 찾는다 (전부 '끝'이 잘려 있다)
 7. **복원 소스 실험** — 4개 소스 선택. routine_queue를 넣으면 rest가 영구 거부됨
@@ -52,7 +52,7 @@ python3 -m http.server 8000
 | C. 전송됨 | phase 2 이후 `마지막 메시지 남기기` → 채팅 전송 |
 | D. 복원 | 복원 실행 후 메뉴 [1] restore_source.exe (voice 소스 포함 시 "고마워" 연출) |
 | E. 보존됨 | current.log 열람 후 `현재 기록 보존` / 메뉴 [3] |
-| F. 방치 | phase 3에서 120초 무입력, 또는 메뉴 [4] keep_watching 후 45초 |
+| F. 방치 | phase 3에서 195초 무입력(165초 경고), 또는 메뉴 [4] keep_watching 후 45초 |
 | R. 휴식 | 루틴 해제 + rest_refusal.log + 왜곡 규칙 + do_not_restore.txt 확인 + **routine_queue를 복원 소스로 쓰지 않음** → 메뉴 [5] rest |
 
 ## 2회차 이후 (NG+)
@@ -81,6 +81,8 @@ assets/
 파일명 = 게임 내 출력 텍스트(말줄임표 제외). 파일을 지우면 코드가 자동으로
 Web Audio 합성 글리치 사운드로 대체하므로, 소재 없이도 전체 플레이가 가능하다.
 ML 보이스 클로닝(새 발화 생성)은 사용하지 않았다 — 실제 발화 조각의 DSP 재가공만 사용.
+AI 장면에서는 전용 `_ai` 음원 또는 원본 조각에 공진 필터, 짧은 이중 음성,
+진폭 변조와 합성 포먼트를 실시간으로 겹쳐 의도적으로 이질적인 출력으로 만든다.
 `work/`에 추출 원본(wav)과 자막이 보존되어 있어 컷을 다시 딸 수 있다.
 
 ### 음성 소재 제작 시 유지할 기준 (사양서 2.2 / 5.3)

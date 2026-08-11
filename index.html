@@ -28,24 +28,45 @@
 <!-- ── 라이브 화면 (치지직 페이지 구조) ─────────────────── -->
 <div id="screen-live" class="screen chzzk-page">
   <div class="gnb">
-    <span class="gnb-logo">치지직</span>
-    <div class="gnb-search"><span>검색</span><span class="gnb-mag">⌕</span></div>
+    <span class="gnb-logo" aria-label="치지직">
+      <span class="gnb-logo-mark" aria-hidden="true">Z</span>
+      <span>치지직</span>
+    </span>
+    <nav class="gnb-nav" aria-label="주요 메뉴">
+      <span class="active">라이브</span>
+      <span>게임</span>
+      <span>클립</span>
+    </nav>
+    <label class="gnb-search">
+      <span class="sr-only">검색</span>
+      <input id="platform-search" type="search" placeholder="채널, 라이브, 동영상 검색" autocomplete="off">
+      <span class="gnb-mag" aria-hidden="true">⌕</span>
+    </label>
     <div class="gnb-right">
-      <button class="gnb-btn">스튜디오</button>
-      <span class="gnb-avatar"></span>
+      <span class="gnb-icon" title="알림" aria-hidden="true">♢</span>
+      <button id="btn-login" type="button" class="gnb-btn">로그인</button>
+      <span class="gnb-avatar" aria-hidden="true"></span>
     </div>
   </div>
   <div class="page-row">
-    <aside class="lnb">
-      <div class="lnb-title">팔로잉</div>
-      <span class="lnb-ch live" title="쿠로네 언니"></span>
-      <span class="lnb-ch off"></span>
-      <span class="lnb-ch off"></span>
-      <span class="lnb-ch off"></span>
+    <aside class="lnb" aria-label="사이드 메뉴">
+      <div class="lnb-menu">
+        <span class="lnb-item active"><b aria-hidden="true">⌂</b><em>홈</em></span>
+        <span class="lnb-item"><b aria-hidden="true">◉</b><em>전체 방송</em></span>
+        <span class="lnb-item"><b aria-hidden="true">▷</b><em>인기 클립</em></span>
+        <span class="lnb-item"><b aria-hidden="true">▦</b><em>카테고리</em></span>
+      </div>
+      <div class="lnb-divider"></div>
+      <div class="lnb-title">팔로잉 채널</div>
+      <span class="lnb-follow active" title="쿠로네 언니">
+        <i class="lnb-ch live" aria-hidden="true"></i><em>쿠로네 언니</em><small>1</small>
+      </span>
+      <span class="lnb-follow"><i class="lnb-ch off" aria-hidden="true"></i><em>오프라인 채널</em></span>
+      <span class="lnb-follow"><i class="lnb-ch off" aria-hidden="true"></i><em>오프라인 채널</em></span>
     </aside>
 
     <div class="content-col">
-      <div class="stage" id="stage">
+      <div class="stage" id="stage" role="button" tabindex="0" aria-label="방송 화면 관찰">
         <div id="bg-capture" class="bg-capture"></div>
         <img id="figure-img" class="figure-img" src="assets/fig/fig_0.png"
              alt="" onerror="this.style.display='none'">
@@ -54,19 +75,21 @@
         <div id="subtitle" class="subtitle hidden"></div>
         <div id="stage-caption" class="stage-caption">source: missing</div>
         <div class="player-bar">
+          <span class="pb-play" aria-hidden="true">▶</span>
+          <span class="pb-volume" aria-hidden="true">◖))</span>
           <span id="live-badge" class="pb-live">LIVE</span>
           <span id="ctl-time">00:00:00</span>
-          <span class="pb-right">1080p&nbsp;&nbsp;⛶</span>
+          <span class="pb-right">⚙&nbsp;&nbsp;1080p&nbsp;&nbsp;⛶</span>
         </div>
         <div id="voice-overlay" class="voice-overlay hidden"></div>
       </div>
 
       <div class="below">
-        <div class="v-title clickable" id="stream-title">[괴담 라디오] 오늘도 잡담</div>
+        <div class="v-title clickable" id="stream-title" role="button" tabindex="0">[괴담 라디오] 오늘도 잡담</div>
         <div class="v-meta">
-          <span id="viewer-count" class="clickable">1명 시청 중</span>
+          <span id="viewer-count" class="clickable" role="button" tabindex="0">1명 시청 중</span>
           <span class="v-dot">·</span>
-          <span id="stream-timer" class="clickable">00:00:00 스트리밍 중</span>
+          <span id="stream-timer" class="clickable" role="button" tabindex="0">00:00:00 스트리밍 중</span>
           <span class="v-chip">talk</span>
           <span class="v-chip">괴담</span>
         </div>
@@ -76,27 +99,31 @@
             <div class="ch-name">쿠로네 언니</div>
             <div class="ch-fol">팔로워 --명</div>
           </div>
-          <button class="follow-btn">팔로잉</button>
+          <button id="btn-follow" type="button" class="follow-btn">팔로잉</button>
         </div>
       </div>
 
-      <div class="statusbar" id="statusbar">
-        <span id="status-text">mic: no input | avatar: unstable | chat: connected</span>
-        <span id="mic-gauge" class="clickable" title="mic">▁▁▁▁</span>
-      </div>
-      <div class="objbar" id="objective">▸ 방송 화면을 관찰하세요</div>
-      <div class="cmdbar">
-        <button data-cmd="desktop" id="btn-desktop" class="locked">filesystem [locked]</button>
-        <button data-cmd="clues" id="btn-clues">traces (0)</button>
-        <button data-cmd="lastmsg" id="btn-lastmsg" class="hidden">last_message</button>
-        <button data-cmd="menu" id="btn-menu" class="hidden">SYSTEM MENU</button>
-        <button data-cmd="quit" class="danger">end_stream</button>
+      <div class="investigation-console">
+        <div class="statusbar" id="statusbar">
+          <span class="console-label">SOURCE MONITOR</span>
+          <span id="status-text">mic: no input | avatar: unstable | chat: connected</span>
+          <span id="mic-gauge" class="clickable" role="button" tabindex="0" title="마이크 상태 관찰">▁▁▁▁</span>
+        </div>
+        <div class="objbar" id="objective">▸ 방송 화면을 관찰하세요</div>
+        <div class="cmdbar">
+          <button data-cmd="desktop" id="btn-desktop" class="locked">filesystem [locked]</button>
+          <button data-cmd="clues" id="btn-clues">traces (0)</button>
+          <button data-cmd="lastmsg" id="btn-lastmsg" class="hidden">last_message</button>
+          <button data-cmd="menu" id="btn-menu" class="hidden">SYSTEM MENU</button>
+          <button data-cmd="quit" class="danger">end_stream</button>
+        </div>
       </div>
     </div>
 
     <div class="chat-panel">
-      <div class="chat-head">채팅<span class="chat-head-ico">👤 ⚙</span></div>
+      <div class="chat-head"><span>채팅</span><span class="chat-head-ico" aria-hidden="true">♢ &nbsp; ⚙</span></div>
       <div id="chat-log" class="chat-log"></div>
+      <div class="chat-notice">채팅 규칙을 지켜주세요 <span>1명 시청 중</span></div>
       <div class="chat-input-row">
         <input id="chat-input" type="text" maxlength="60"
                placeholder="채팅을 입력해주세요" autocomplete="off">

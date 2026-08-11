@@ -258,8 +258,44 @@ function boot() {
 
 $("#btn-enter").addEventListener("click", () => {
   AUDIO.init();
+  AUDIO.ui("open");
   startLive();
 });
+
+/* 플랫폼 크롬도 눌렀을 때 무반응으로 보이지 않게 세계관 안에서 응답한다. */
+$("#btn-login").addEventListener("click", () => {
+  toast("account service: unavailable", true);
+});
+$("#btn-follow").addEventListener("click", () => {
+  toast("이미 팔로우 중인 채널입니다");
+});
+$("#platform-search").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  const query = e.currentTarget.value.trim();
+  if (!query) return;
+  e.preventDefault();
+  toast(`“${query}” 검색 결과가 없습니다`, true);
+  e.currentTarget.select();
+});
+
+/* 정적 HTML과 동적으로 생기는 파일/퍼즐 버튼 모두 같은 사운드 언어를 쓴다. */
+const UI_SOUND_TARGET = "button, .clickable, #stage, .broken-line, .source-panel label";
+document.addEventListener("pointerover", (e) => {
+  const target = e.target.closest && e.target.closest(UI_SOUND_TARGET);
+  if (!target || (e.relatedTarget && target.contains(e.relatedTarget))) return;
+  AUDIO.ui("hover");
+});
+document.addEventListener("click", (e) => {
+  const target = e.target.closest && e.target.closest(UI_SOUND_TARGET);
+  if (!target) return;
+  if (target.matches(":disabled") || target.classList.contains("locked") || target.classList.contains("disabled")) {
+    AUDIO.ui("deny");
+  } else if (target.closest(".file-list")) {
+    AUDIO.ui("open");
+  } else {
+    AUDIO.ui("press");
+  }
+}, true);
 
 /* ── 라이브 시작 ───────────────────────────────────────── */
 
@@ -325,7 +361,7 @@ function tryLoadCapture() {
 function tickClock() {
   // 이상 현상: LIVE 시간이 움직이지 않는다 (헤더와 플레이어 바 동일)
   const t = Math.random() < 0.06 ? "--:--:--" : "00:00:00";
-  $("#stream-timer").textContent = t;
+  $("#stream-timer").textContent = t + " 스트리밍 중";
   const ctl = $("#ctl-time");
   if (ctl) ctl.textContent = t;
 }
@@ -393,7 +429,7 @@ function flickerTick() {
     if (blink) { blink.classList.remove("on"); void blink.offsetWidth; blink.classList.add("on"); }
     state.lungeUntil = now + 420;
     AUDIO.glitch(0.9);
-    AUDIO.voice("언니", 0.14, 0.82);
+    AUDIO.voice("언니", 0.14, 0.82, true);
     shakeFrame();
     return;
   }
@@ -539,7 +575,7 @@ function startFakeBroadcast() {
   $("#status-text").textContent = "avatar: presenting | script: assembled | mic: no input";
   AUDIO.radioTune(1.8);
   AUDIO.bgm("bgm_fake_opening", 0.45); // 그녀의 발성으로 합성된 어설픈 허밍
-  later(() => AUDIO.voice("언하", 0.5), 1500); // 항상 "언하 언하"로 시작 — 합성된 인사
+  later(() => AUDIO.voice("언하", 0.5, 1, true), 1500); // 항상 "언하 언하"로 시작 — 합성된 인사
   state.energy = 0;
 
   const B = DATA.broadcast;
@@ -562,7 +598,7 @@ function startFakeBroadcast() {
       later(() => {
         if (state.ended) return;
         showSubtitle(pick(B.greets));
-        AUDIO.voice("namecall", 0.6);   // 이름을 부르는, 사람이 아닌 목소리
+        AUDIO.voice("namecall", 0.6, 1, true);   // 이름을 부르는, 사람이 아닌 목소리
         shakeFrame();
       }, 1500 + 2 * lineGap);
       later(() => {
@@ -712,6 +748,7 @@ function foundAnomaly(key, el) {
       b.textContent = "filesystem";
       b.classList.add("new");
       setPhase(2);
+      AUDIO.ui("confirm");
       AUDIO.silence(1.2);
     }, 900);
   }
@@ -799,7 +836,7 @@ function autoChat() {
   if (state.phase >= 3 && Math.random() < 0.08) {
     // 가끔은 반속으로, 가끔은 로봇 톤으로 — 진짜와 합성이 섞여 들린다
     const slow = Math.random() < 0.4;
-    const ai = Math.random() < 0.35;
+    const ai = Math.random() < (state.phase >= 3 ? 0.8 : 0.45);
     AUDIO.voice(pick(DATA.whispers), slow ? 0.18 : 0.25, slow ? 0.86 : 1, ai);
   }
 }
@@ -1009,6 +1046,11 @@ $("#chat-input").addEventListener("keydown", (e) => { if (e.key === "Enter") sen
 document.addEventListener("mousemove", () => { state.lastActivity = Date.now(); });
 document.addEventListener("keydown", (e) => {
   state.lastActivity = Date.now();
+  if ((e.key === "Enter" || e.key === " ") &&
+      (e.target.matches(".clickable") || e.target.matches("#stage"))) {
+    e.preventDefault();
+    e.target.click();
+  }
   if (e.key === "Escape") $("#clue-panel").classList.add("hidden");
 });
 
@@ -1126,6 +1168,10 @@ function handleCmd(cmd) {
   state.lastActivity = Date.now();
   switch (cmd) {
     case "desktop":
+      if (activeScreen() === "restore" && restoring) {
+        toast("복원 실행이 끝날 때까지 창을 닫을 수 없습니다", true);
+        return;
+      }
       if (!state.unlocked.desktop) { chatSys("filesystem: access denied"); return; }
       $("#btn-desktop").classList.remove("new");
       openDesktop(); break;
@@ -1204,22 +1250,40 @@ function updateAddr() {
   if (a) a.value = ADDR_BASE[deskDir] || ADDR_BASE.root;
 }
 
-const DIR_SEGMENTS = ["desktop", "alert_test", "stream_scripts", "recordings", ""];
-
 $("#addr-input").addEventListener("keydown", (e) => {
   if (e.key !== "Enter") return;
   state.lastActivity = Date.now();
   const raw = e.target.value.trim();
-  const name = (raw.split("\\").filter(Boolean).pop() || "").toLowerCase();
-  if (DIR_SEGMENTS.includes(name.replace("c:", ""))) { updateAddr(); return; }
+  const normalized = raw.replace(/\//g, "\\").replace(/\\+$/, "");
+  const name = (normalized.split("\\").filter(Boolean).pop() || "").toLowerCase();
+
+  // 탐색기 주소 자체를 입력하면 실제 폴더로 이동한다. 이전에는 유효한
+  // 폴더 이름을 오히려 무시하고 현재 주소로 되돌리는 문제가 있었다.
+  if (["desktop", "stream", "c:"].includes(name)) {
+    deskDir = "root";
+    renderDesk();
+    setDeskView("Desktop으로 돌아왔습니다.");
+    return;
+  }
+
   const entries = deskEntries();
-  const hit =
+  let hit =
     entries.find((x) => x.name.toLowerCase().replace(/\/$/, "") === name.replace(/\/$/, "")) ||
     (name.length >= 2 && entries.find((x) => x.name.toLowerCase().includes(name)));
+
+  // 다른 폴더에 있더라도 Desktop의 절대 경로와 항목은 찾을 수 있어야 한다.
+  if (!hit) {
+    const rootEntry = Object.entries(DATA.files).find(
+      ([entryName]) => entryName.toLowerCase().replace(/\/$/, "") === name.replace(/\/$/, ""));
+    if (rootEntry) hit = { name: rootEntry[0], f: rootEntry[1] };
+  }
+
   if (hit) {
     openDeskEntry(hit);
-    renderDesk();
-    updateAddr();
+    if (activeScreen() === "desktop") {
+      renderDesk();
+      updateAddr();
+    }
   } else {
     // 진짜 윈도우의 그 문구
     setDeskView(
@@ -1393,7 +1457,7 @@ function openFinalTale() {
   const prev = DATA.statusbars[state.phase];
   status.textContent = "mic: INPUT DETECTED | avatar: still | chat: connected";
 
-  later(() => AUDIO.voice("아직", 0.3, 0.85), 3200); // 반속의 낮은 한 마디
+  later(() => AUDIO.voice("아직", 0.3, 0.85, true), 3200); // 반속의 낮은 한 마디
   later(() => {
     status.textContent = prev;
     if (!state.ended) chatAdd("방금 마이크 켜졌었지", "creep");
@@ -1555,6 +1619,7 @@ function answerPuzzle(p, opt, btn) {
     btn.disabled = true;
     state.wrongParse++;
     $("#puzzle-text").textContent += `\n\n그건 거기 없었다.`;
+    AUDIO.ui("deny");
     AUDIO.glitch(0.6);
     shakeFrame();
     return;
@@ -1562,6 +1627,7 @@ function answerPuzzle(p, opt, btn) {
   btn.classList.add("correct");
   $("#puzzle-opts").querySelectorAll("button").forEach((b) => (b.disabled = true));
   $("#puzzle-text").textContent += "\n\n" + p.success.join("\n");
+  AUDIO.ui("confirm");
   AUDIO.glitch(0.35);
   state.energy = Math.max(state.energy, 3);
 
@@ -1590,7 +1656,7 @@ function answerPuzzle(p, opt, btn) {
     if (state.clipsDone.size === DATA.clips.length) {
       later(() => {
         toast("recordings: 모든 클립 검토 완료");
-        AUDIO.voice("기다려", 0.3, 0.85);
+        AUDIO.voice("기다려", 0.3, 0.85, true);
         addClue(DATA.clipsAllClue.text, DATA.clipsAllClue.next);
       }, 900);
     }
@@ -1725,6 +1791,7 @@ function openTodo(name) {
 
 function routineFail(name) {
   state.routineFails++;
+  AUDIO.ui("deny");
   AUDIO.glitch(0.8);
   shakeFrame();
   let spawnLine = "";
@@ -1753,6 +1820,7 @@ function routineSucceed(skipped) {
   chatSys("rest option partially available.");
   addClue("루틴이 끊겼다. rest는 이제 시스템이 막을 수만은 없는 선택지다.",
     "→ 남은 조건은 do_not_restore.txt 에 정리되어 있다.");
+  AUDIO.ui("confirm");
   setPhase(3);
   AUDIO.silence(2);
   updateObjective();
@@ -1781,6 +1849,9 @@ status: returned`;
 
 function openRecords() {
   showScreen("records");
+  // preserve는 current.log 전용 액션이다. 다른 기록으로 이동하거나 화면을
+  // 다시 열었을 때 이전 선택 상태가 남지 않게 매번 닫는다.
+  $("#btn-preserve").classList.add("hidden");
   const list = $("#file-list");
   list.innerHTML = "";
   let files = [...DATA.records];
@@ -1796,6 +1867,7 @@ function openRecords() {
       b.classList.add("sel");
       $("#file-view").textContent = f.current ? currentLogBody() : f.body;
       $("#file-view").classList.toggle("oldtext", !!(f.odd || f.newFile));
+      $("#btn-preserve").classList.toggle("hidden", !f.current);
       if (!f.current) {
         state.recViewed.add(f.name);
         if (state.recViewed.size >= 2 && !state.unlocked.restore) {
@@ -1807,7 +1879,6 @@ function openRecords() {
         }
         if (state.recViewed.size >= 3 && !state.quizDone) $("#btn-quiz").classList.remove("hidden");
       } else {
-        $("#btn-preserve").classList.remove("hidden");
         AUDIO.glitch(0.5);
       }
       updateObjective();
@@ -1869,13 +1940,14 @@ function renderSources() {
     const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.checked = state.sources.has(s.id);
+    cb.disabled = restoring;
     cb.addEventListener("change", () => {
       if (cb.checked) state.sources.add(s.id);
       else state.sources.delete(s.id);
       label.classList.toggle("on", cb.checked);
     });
     label.appendChild(cb);
-    label.appendChild(document.createTextNode("[" + (state.sources.has(s.id) ? "x" : " ") + "] " + s.label));
+    label.appendChild(document.createTextNode(s.label));
     const note = document.createElement("span");
     note.className = "src-note";
     note.textContent = s.note;
@@ -1885,6 +1957,7 @@ function renderSources() {
 }
 
 let restoring = false;
+let restoreBatch = [];
 
 function runRestore() {
   if (restoring) return;
@@ -1893,10 +1966,13 @@ function runRestore() {
     return;
   }
   restoring = true;
+  restoreBatch = DATA.sources.filter((s) => state.sources.has(s.id));
   $("#btn-restore-run").disabled = true;
+  $("#btn-restore-back").disabled = true;
+  renderSources();
   AUDIO.bgm("bgm_drone_ai", 0.35); // 타임스트레치 아티팩트 패드
 
-  const chosen = DATA.sources.filter((s) => state.sources.has(s.id));
+  const chosen = restoreBatch;
   const log = $("#restore-log");
   log.textContent = "RESTORE SOURCE — 실행 중\n";
   let i = 0;
@@ -1928,7 +2004,10 @@ function runRestore() {
 function finishRestoreRun() {
   restoring = false;
   $("#btn-restore-run").disabled = false;
-  state.restore = 25 * state.sources.size;
+  $("#btn-restore-back").disabled = false;
+  state.restore = 25 * restoreBatch.length;
+  restoreBatch = [];
+  renderSources();
   state.restoreRan = true;
   state.menuUnlocked = true;
   $("#btn-menu").classList.remove("hidden");
@@ -1951,6 +2030,7 @@ function finishRestoreRun() {
       "→ do_not_restore.txt 조건 충족에 가까워졌다.");
   }
   chatSys(`restore_rate: ${state.restore}%`);
+  AUDIO.ui("confirm");
   updateObjective();
 }
 
@@ -2053,7 +2133,7 @@ function playVoiceFragment(text) {
   const ov = $("#voice-overlay");
   ov.textContent = `"${text}"`;
   ov.classList.remove("hidden");
-  AUDIO.voice(text);
+  AUDIO.voice(text, 0.8, 1, true);
   shakeFrame();
   later(() => ov.classList.add("hidden"), 1300);
 }
@@ -2158,8 +2238,8 @@ function runEnding(key) {
     const status = $("#status-text");
     status.textContent = "mic: input detected";
     AUDIO.radioTune(1.5);
-    later(() => AUDIO.voice("고", 0.35, 0.88), 600);
-    later(() => AUDIO.voice("보고", 0.28, 0.85), 1500);
+    later(() => AUDIO.voice("고", 0.35, 0.88, true), 600);
+    later(() => AUDIO.voice("보고", 0.28, 0.85, true), 1500);
     later(() => endingSequence(key), 2800);
     return;
   }
@@ -2171,6 +2251,7 @@ function endingSequence(key) {
   state.ended = true;
   clearTimers();
   if (key !== "R") AUDIO.glitch(1);
+  AUDIO.stopAll();
 
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({

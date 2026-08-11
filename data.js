@@ -681,7 +681,7 @@ test #4: (무제)               → 전송됨. 내용 없음.
 
 거절은 늘 같은 순서였다.
 잠 → 다음 방송 → 나중에.
-끊으려면, 그 역순으로.
+끊으려면, 쌓인 순서대로 하나씩 무효화한다.
 
 마지막 기록: --:--  "이것만 끝나고"`,
     },
@@ -776,7 +776,7 @@ ending: sent`,
       body:
 `entered: 23:02
 original_message: 무리하지 마세요
-displayed_as: 하지 마세요
+displayed_as: 무리
 motion_contribution: 1
 ending: restored`,
     },

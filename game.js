@@ -323,6 +323,7 @@ function loadCheckpoint() {
 function showScreen(name) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
   $("#screen-" + name).classList.add("active");
+  if (name !== "live") $("#search-rest-result").classList.add("hidden");
   document.body.classList.toggle("in-windows", WIN_SCREENS.has(name));
   // 화면 인지 채팅 — 어디를 보는지 채팅이 안다 (라이브로 돌아오면 보게 된다)
   if (state.phase >= 2 && !state.ended && DATA.screenAware[name] && Math.random() < 0.45) {
@@ -531,12 +532,70 @@ $("#btn-follow").addEventListener("click", () => {
   toast("이미 팔로우 중인 채널입니다");
 });
 $("#platform-search").addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    $("#search-rest-result").classList.add("hidden");
+    return;
+  }
   if (e.key !== "Enter") return;
   const query = e.currentTarget.value.trim();
   if (!query) return;
   e.preventDefault();
+  const normalized = query.normalize("NFC").replace(/\s+/g, " ");
+  if (normalized === "언니 쉬어") {
+    revealRestSearch(e.currentTarget);
+    return;
+  }
+  $("#search-rest-result").classList.add("hidden");
   toast(`“${query}” 검색 결과가 없습니다`, true);
   e.currentTarget.select();
+});
+
+function revealRestSearch(input) {
+  const result = $("#search-rest-result");
+  const deleted = $("#search-rest-deleted");
+  const action = $("#btn-search-rest");
+  result.classList.remove("hidden", "resolved");
+  deleted.classList.remove("glitching");
+  void deleted.offsetWidth;
+  deleted.classList.add("glitching");
+  $("#search-rest-status").classList.add("hidden");
+  action.disabled = false;
+  action.textContent = "방송 쉬게 하기";
+  AUDIO.radioTune(0.8);
+  AUDIO.broadcastVoice("언니 쉬어", "fractured");
+  later(() => {
+    if (input.value.normalize("NFC").replace(/\s+/g, " ") === "언니 쉬어") input.value = "언니";
+  }, 420);
+  if (state.liveStart) {
+    later(() => { if (!state.ended) chatAdd("검색 결과에서 쉬어가 지워졌어", "creep"); }, 900);
+  }
+}
+
+$("#btn-search-result-close").addEventListener("click", () => {
+  $("#search-rest-result").classList.add("hidden");
+  $("#platform-search").focus();
+});
+
+$("#btn-search-rest").addEventListener("click", (event) => {
+  if (state.ended) return;
+  event.currentTarget.disabled = true;
+  event.currentTarget.textContent = "요청 처리됨";
+  const status = $("#search-rest-status");
+  status.textContent =
+`rest request: accepted
+target: broadcaster
+target status: not found
+
+request reassigned to: viewer_current`;
+  status.classList.remove("hidden");
+  $("#search-rest-result").classList.add("resolved");
+  state.micAliveUntil = Date.now() + 2200;
+  AUDIO.silence(1.2);
+  AUDIO.broadcastVoice("쉬어도 되는 건 너", "fractured");
+  showSubtitle("쉬어도 되는 건 방송자가 아닙니다.");
+  later(() => $("#subtitle").classList.add("hidden"), 2400);
+  later(() => { if (!state.ended) chatAdd("너한테 쉬라고 한 거 아니야", "creep"); }, 1500);
+  shakeFrame();
 });
 
 /* 정적 HTML과 동적으로 생기는 파일/퍼즐 버튼 모두 같은 사운드 언어를 쓴다. */

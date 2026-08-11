@@ -41,11 +41,26 @@
       <span>게임</span>
       <span>클립</span>
     </nav>
-    <label class="gnb-search">
-      <span class="sr-only">검색</span>
-      <input id="platform-search" type="search" placeholder="채널, 라이브, 동영상 검색" autocomplete="off">
-      <span class="gnb-mag" aria-hidden="true">⌕</span>
-    </label>
+    <div class="gnb-search-wrap">
+      <label class="gnb-search">
+        <span class="sr-only">검색</span>
+        <input id="platform-search" type="search" placeholder="채널, 라이브, 동영상 검색" autocomplete="off">
+        <span class="gnb-mag" aria-hidden="true">⌕</span>
+      </label>
+      <div id="search-rest-result" class="search-rest-result hidden" role="status" aria-live="assertive">
+        <div class="search-result-head"><span>검색 결과 1개</span><button id="btn-search-result-close" type="button" aria-label="검색 결과 닫기">×</button></div>
+        <div class="search-result-channel">
+          <span class="search-result-avatar" aria-hidden="true"></span>
+          <span><b>쿠로네 언니</b><small>LIVE · broadcaster: not found</small></span>
+        </div>
+        <div class="search-result-match">
+          <span>일치한 검색어</span><b>“언니”</b>
+          <span>삭제된 검색어</span><del id="search-rest-deleted">“쉬어”</del>
+        </div>
+        <button id="btn-search-rest" type="button" class="search-rest-action">방송 쉬게 하기</button>
+        <pre id="search-rest-status" class="search-rest-status hidden"></pre>
+      </div>
+    </div>
     <div class="gnb-right">
       <button type="button" class="gnb-btn save-control" data-cmd="save" title="현재 진행 저장 (Ctrl+S)">저장</button>
       <button type="button" class="gnb-btn load-control" data-cmd="load" title="저장 지점 불러오기 (Ctrl+L)">불러오기</button>

@@ -176,6 +176,7 @@ const CHECKPOINT_SETS = [
 ];
 
 function checkpointPayload() {
+  const chatLines = [...$("#chat-log").children].slice(-32);
   const payload = {
     version: 1,
     runBase: save.runs,
@@ -187,11 +188,60 @@ function checkpointPayload() {
     clues: state.clues.map((clue) => ({ ...clue })),
     spawnedTodos: [...state.spawnedTodos],
     echoes: [...state.echoes],
-    chatHtml: $("#chat-log").innerHTML,
+    // 진행이 길어져도 localStorage 용량을 압박하지 않도록 최근 대화만 보존한다.
+    chatHtml: chatLines.map((line) => line.outerHTML).join(""),
   };
   CHECKPOINT_SCALARS.forEach((key) => { payload[key] = state[key]; });
   CHECKPOINT_SETS.forEach((key) => { payload[key] = [...state[key]]; });
+  // 복원 애니메이션 중 저장하면 실행 직전의 안정된 상태로 돌아온다.
+  if (restoring && restoreStartSnapshot) {
+    Object.assign(payload, restoreStartSnapshot, { resumeScreen: "restore", restoreInterrupted: true });
+  }
   return payload;
+}
+
+function persistCheckpoint(payload) {
+  let serialized = JSON.stringify(payload);
+  try {
+    localStorage.setItem(CHECKPOINT_KEY, serialized);
+  } catch (firstError) {
+    // 오래 플레이한 브라우저의 저장 공간이 빠듯하면 비진행 데이터만 덜어내고
+    // 기존 체크포인트를 백업한 뒤 한 번 더 기록한다.
+    const previous = localStorage.getItem(CHECKPOINT_KEY);
+    const compact = {
+      ...payload,
+      chatHtml: "",
+      clues: payload.clues.slice(-12),
+      storageMode: "compact",
+    };
+    serialized = JSON.stringify(compact);
+    try {
+      localStorage.removeItem(CHECKPOINT_KEY);
+      localStorage.setItem(CHECKPOINT_KEY, serialized);
+      payload = compact;
+    } catch (secondError) {
+      if (previous !== null) {
+        try { localStorage.setItem(CHECKPOINT_KEY, previous); } catch { /* 기존 저장도 복구 불가 */ }
+      }
+      throw secondError || firstError;
+    }
+  }
+  const verified = JSON.parse(localStorage.getItem(CHECKPOINT_KEY) || "null");
+  if (!verified || verified.savedAt !== payload.savedAt) throw new Error("checkpoint verification failed");
+  return { payload, bytes: serialized.length };
+}
+
+function showCheckpointFeedback(progress) {
+  document.querySelectorAll(".save-control").forEach((button) => {
+    const original = button.dataset.saveLabel || button.textContent;
+    button.dataset.saveLabel = original;
+    button.textContent = `저장됨 ${progress}%`;
+    button.classList.add("saved");
+    setTimeout(() => {
+      button.textContent = button.dataset.saveLabel || "저장";
+      button.classList.remove("saved");
+    }, 1800);
+  });
 }
 
 function saveCheckpoint() {
@@ -201,20 +251,17 @@ function saveCheckpoint() {
     AUDIO.ui("deny");
     return;
   }
-  if (restoring) {
-    toast("복원이 끝난 뒤 저장할 수 있습니다", true);
-    AUDIO.ui("deny");
-    return;
-  }
   try {
-    const payload = checkpointPayload();
-    localStorage.setItem(CHECKPOINT_KEY, JSON.stringify(payload));
+    const result = persistCheckpoint(checkpointPayload());
+    const payload = result.payload;
     updateSaveControls();
-    toast(`진행 저장 완료 · ${payload.progress}%`);
+    showCheckpointFeedback(payload.progress);
+    toast(`진행 저장 완료 · ${payload.progress}%${payload.restoreInterrupted ? " · 복원 실행 직전" : ""}`);
     chatSys(`checkpoint saved: ${payload.progress}%`);
     AUDIO.ui("confirm");
-  } catch {
-    toast("이 브라우저에서는 진행을 저장할 수 없습니다", true);
+  } catch (error) {
+    const quota = error && (error.name === "QuotaExceededError" || error.code === 22);
+    toast(quota ? "저장 공간이 부족합니다. 브라우저 사이트 데이터를 확인해 주세요." : "저장 검증에 실패했습니다. 다시 눌러 주세요.", true);
     AUDIO.ui("deny");
   }
 }
@@ -238,6 +285,7 @@ function resetTransientState() {
   puzzleCtx = null;
   restoring = false;
   restoreBatch = [];
+  restoreStartSnapshot = null;
   deskDir = "root";
   nextChatAt = 0;
   nextRestChatAt = 0;
@@ -314,7 +362,7 @@ function loadCheckpoint() {
   AUDIO.ambient("bgm_ominous", 0.16);
   startRuntimeLoops();
   resumeCheckpointScreen(checkpoint.resumeScreen);
-  toast(`저장 지점 복원 · ${checkpoint.progress || progressSnapshot().percent}%`);
+  toast(`저장 지점 복원 · ${checkpoint.progress || progressSnapshot().percent}%${checkpoint.restoreInterrupted ? " · 중단된 복원은 실행 전으로 복귀" : ""}`);
   chatSys("checkpoint restored.");
   AUDIO.ui("confirm");
   return true;
@@ -2409,6 +2457,7 @@ function renderSources() {
 
 let restoring = false;
 let restoreBatch = [];
+let restoreStartSnapshot = null;
 
 function runRestore() {
   if (restoring) return;
@@ -2416,6 +2465,11 @@ function runRestore() {
     $("#restore-log").textContent += "\n\nno source selected.";
     return;
   }
+  restoreStartSnapshot = {
+    restore: state.restore,
+    restoreRan: state.restoreRan,
+    routineSourceUsed: state.routineSourceUsed,
+  };
   restoring = true;
   restoreBatch = DATA.sources.filter((s) => state.sources.has(s.id));
   $("#btn-restore-run").disabled = true;
@@ -2482,6 +2536,7 @@ function finishRestoreRun() {
   }
   chatSys(`restore_rate: ${state.restore}%`);
   AUDIO.ui("confirm");
+  restoreStartSnapshot = null;
   updateObjective();
 }
 

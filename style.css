@@ -748,6 +748,7 @@ body.in-windows .taskbar { display: flex; }
   cursor: pointer;
 }
 .task-save:disabled { opacity: .42; cursor: default; }
+.task-save.saved { color: var(--chzzk); border-color: rgba(0,248,137,.55); }
 .task-clock {
   margin-left: auto;
   font-family: var(--font-ui);
@@ -965,6 +966,7 @@ body.in-windows .taskbar { display: flex; }
 .gnb-btn:hover { background: var(--panel-soft); }
 .gnb-btn:disabled { opacity: .42; cursor: default; }
 .gnb-btn.save-control, .gnb-btn.load-control { padding-inline: 10px; font-size: 12px; }
+.gnb-btn.save-control.saved { color: var(--chzzk); border-color: rgba(0,248,137,.55); }
 .gnb-avatar { width: 30px; height: 30px; border-radius: 50%;
   background: linear-gradient(135deg, #3a3d44, #24262a); }
 

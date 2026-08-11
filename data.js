@@ -915,6 +915,7 @@ chat_stream: active`,
   /* ── 엔딩 ─────────────────────────────────────────────── */
   endingMeta: {
     A: { title: "강제 종료", desc: "시청자는 연결을 끊었다. 방송은 그 빈자리를 기록으로 채웠다.", stamp: "STREAM REJECTED" },
+    B: { title: "마지막 방송", desc: "붙잡고 있던 대체 소스를 모두 끊었다. 이번에는 방송자도 시청자도 기록으로 돌아가지 않는다.", stamp: "BROADCASTER RELEASED" },
     C: { title: "마지막 메시지", desc: "보낸 말은 작별이 되지 못하고 형상의 움직임으로 배정되었다.", stamp: "MESSAGE ARCHIVED" },
     D: { title: "대체 방송자", desc: "복원은 사람을 돌려놓지 않았다. 기록들로 방송할 무언가를 완성했다.", stamp: "SOURCE GENERATED" },
     E: { title: "보존된 시청자", desc: "현재의 시청자도 하나의 기록이 되어 다음 방송에 남았다.", stamp: "VIEWER PRESERVED" },
@@ -934,6 +935,22 @@ broadcaster: not found
 motion source: 반죽_records
 voice source: generated
 stream status: continuing`,
+
+    B:
+`release protocol: BRD-NULL-REST
+
+routine_queue: TERMINATED
+chat_stream: detached
+viewer_records: unmounted
+generated_voice: disconnected
+substitute_0: stopped
+
+stream status: OFFLINE
+broadcaster: released
+viewer_current: released
+
+[00:00] 오늘 괴담은 여기까지.
+[00:01] 같이 나갔습니다.`,
 
     C:
 `message sent.

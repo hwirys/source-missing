@@ -325,13 +325,15 @@ const AUDIO = (() => {
   function ending(kind = "bad") {
     if (!ctx || !master) return;
     const now = ctx.currentTime;
-    const resolved = kind === "rest";
-    const notes = resolved ? [220, 330, 440, 660] : [110, 82, 55];
+    const escaped = kind === "escape";
+    const resolved = kind === "rest" || escaped;
+    const notes = escaped ? [196, 294, 392, 587, 784]
+      : (resolved ? [220, 330, 440, 660] : [110, 82, 55]);
     notes.forEach((frequency, index) => {
-      const at = now + index * (resolved ? 0.2 : 0.28);
+      const at = now + index * (escaped ? 0.16 : (resolved ? 0.2 : 0.28));
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.type = resolved ? "sine" : (index === 0 ? "sawtooth" : "triangle");
+      osc.type = escaped && index % 2 ? "triangle" : (resolved ? "sine" : (index === 0 ? "sawtooth" : "triangle"));
       osc.frequency.setValueAtTime(frequency, at);
       if (!resolved) osc.frequency.exponentialRampToValueAtTime(Math.max(28, frequency * 0.62), at + 1.4);
       gain.gain.setValueAtTime(0.0001, at);

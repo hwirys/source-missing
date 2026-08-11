@@ -55,6 +55,7 @@ python3 -m http.server 8000
 | 키 | 조건 |
 |---|---|
 | A. 방송 종료 | `방송 종료` 버튼 / 메뉴 [2] end_stream.exe |
+| B. 마지막 방송 | 루틴·왜곡 해제 + do_not_restore/마지막 괴담 확인 + 검색창 `언니 쉬어` 요청 → 메뉴 [6] release_broadcaster.exe. 방송자와 시청자가 함께 탈출 |
 | C. 전송됨 | phase 2 이후 `마지막 메시지 남기기` → 채팅 전송 |
 | D. 복원 | 복원 실행 후 메뉴 [1] restore_source.exe (voice 소스 포함 시 "고마워" 연출) |
 | E. 보존됨 | current.log 열람 후 `현재 기록 보존` / 메뉴 [3] |

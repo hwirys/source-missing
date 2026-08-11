@@ -68,6 +68,7 @@ const state = {
 
   dnrVisible: save.runs >= 2,
   dnrRead: false,
+  releaseRequestSent: false,
 
   menuUnlocked: false,
   lastMsgMode: false,
@@ -165,6 +166,7 @@ const CHECKPOINT_SCALARS = [
   "mapConfirmed", "alertFailRead", "wrongParse", "routineStep", "routineFails",
   "routineCleared", "restRefusalRead", "quizDone", "negationRule", "endStreamHint",
   "restoreRan", "routineSourceUsed", "dnrVisible", "dnrRead", "menuUnlocked",
+  "releaseRequestSent",
   "lastCorrupted", "nameEchoDone", "finalTaleVisible", "finalTaleRead",
   "broadcastCount", "ghostNoticed", "greetNoticed", "substituteRead", "preReadDone",
   "rawEchoNoted", "viewerNoteDone", "addrGhostDone", "progressAnnounced",
@@ -311,6 +313,9 @@ function syncStateUi() {
   $("#statusbar").classList.toggle("alert", state.phase >= 3);
   $("#status-text").textContent = DATA.statusbars[state.phase] || DATA.statusbars[1];
   $("#stage-caption").textContent = state.phase >= 3 ? "identity source: repeated_names" : "source: missing";
+  $("#stage").classList.remove("release-sequence");
+  $("#figure-img").style.visibility = "visible";
+  $("#figure").style.visibility = "visible";
   $("#live-badge").textContent = "LIVE";
   $("#subtitle").classList.add("hidden");
   $("#voice-overlay").classList.add("hidden");
@@ -374,7 +379,7 @@ function showScreen(name) {
   if (name !== "live") $("#search-rest-result").classList.add("hidden");
   document.body.classList.toggle("in-windows", WIN_SCREENS.has(name));
   // 화면 인지 채팅 — 어디를 보는지 채팅이 안다 (라이브로 돌아오면 보게 된다)
-  if (state.phase >= 2 && !state.ended && DATA.screenAware[name] && Math.random() < 0.45) {
+  if (state.phase >= 2 && !state.ended && !state.endingPending && DATA.screenAware[name] && Math.random() < 0.45) {
     later(() => {
       if (!state.ended) chatAdd(pick(DATA.screenAware[name]));
     }, 1500 + Math.random() * 2500);
@@ -458,6 +463,7 @@ function solvedReq() {
 
 function progressSnapshot() {
   const ratio = (value, need) => Math.min(1, value / need);
+  const releaseReady = broadcasterReleaseBlockers().length === 0;
   const percent = Math.round(
     ratio(state.anoms.size, DATA.anomalyNeed) * 12 +
     (state.mapConfirmed ? 10 : 0) +
@@ -466,7 +472,7 @@ function progressSnapshot() {
     ratio(state.recViewed.size, RECORD_VIEW_NEED) * 10 +
     (state.quizDone ? 10 : 0) +
     ratio(state.clipsDone.size, CLIP_REVIEW_NEED) * 10 +
-    (state.restoreRan ? 10 : 0) +
+    (state.restoreRan || releaseReady ? 10 : 0) +
     (state.dnrRead ? 8 : 0));
 
   let chapter = "CHAPTER 1 · 방송 관찰";
@@ -475,6 +481,7 @@ function progressSnapshot() {
   if (state.routineCleared) chapter = "CHAPTER 4 · 기록 대조";
   if (state.quizDone && state.clipsDone.size >= CLIP_REVIEW_NEED) chapter = "CHAPTER 5 · 소스 복원";
   if (state.restoreRan && state.dnrRead) chapter = "FINAL · 마지막 선택";
+  if (releaseReady) chapter = "TRUE EXIT · 방송자 해방";
   return { percent: Math.min(100, percent), chapter };
 }
 
@@ -518,8 +525,11 @@ function computeObjective() {
   if (!state.quizDone) return "\ubb34\uc5c7\uc774 \uc9c0\uc6cc\uc9c0\ub294\uac00";
   if (state.mapConfirmed && state.clipsDone.size < CLIP_REVIEW_NEED)
     return `\uc798\ub9b0 \ub05d (${state.clipsDone.size}/${CLIP_REVIEW_NEED})`;
-  if (!state.restoreRan) return "\uc804\ubd80 \ubcf5\uc6d0\ud558\uc9c0 \ub9d0 \uac83";
   if (state.dnrVisible && !state.dnrRead) return "\uc228\uae40 \ud30c\uc77c";
+  if (state.dnrRead && !state.finalTaleRead) return "[\uc120\ud0dd] \ub9c8\uc9c0\ub9c9_\uad34\ub2f4.txt";
+  if (state.finalTaleRead && !state.releaseRequestSent) return "[\uc120\ud0dd] \uac80\uc0c9: \uc5b8\ub2c8 \uc26c\uc5b4";
+  if (broadcasterReleaseBlockers().length === 0) return "SYSTEM MENU [6] release_broadcaster";
+  if (!state.restoreRan) return "\uc804\ubd80 \ubcf5\uc6d0\ud558\uc9c0 \ub9d0 \uac83";
   return "\ub9c8\uc9c0\ub9c9 \uc120\ud0dd";
 }
 
@@ -602,13 +612,23 @@ function revealRestSearch(input) {
   const result = $("#search-rest-result");
   const deleted = $("#search-rest-deleted");
   const action = $("#btn-search-rest");
-  result.classList.remove("hidden", "resolved");
+  result.classList.remove("hidden");
   deleted.classList.remove("glitching");
   void deleted.offsetWidth;
   deleted.classList.add("glitching");
-  $("#search-rest-status").classList.add("hidden");
-  action.disabled = false;
-  action.textContent = "방송 쉬게 하기";
+  const status = $("#search-rest-status");
+  if (state.releaseRequestSent) {
+    result.classList.add("resolved");
+    status.textContent = "release token: BRD-NULL-REST\nstatus: request logged";
+    status.classList.remove("hidden");
+    action.disabled = true;
+    action.textContent = "해방 요청 기록됨";
+  } else {
+    result.classList.remove("resolved");
+    status.classList.add("hidden");
+    action.disabled = false;
+    action.textContent = "방송 쉬게 하기";
+  }
   AUDIO.radioTune(0.8);
   AUDIO.broadcastVoice("언니 쉬어", "fractured");
   later(() => {
@@ -635,14 +655,19 @@ target: broadcaster
 target status: not found
 
 request reassigned to: viewer_current`;
+  status.textContent += "\nrelease token: BRD-NULL-REST";
   status.classList.remove("hidden");
   $("#search-rest-result").classList.add("resolved");
+  state.releaseRequestSent = true;
   state.micAliveUntil = Date.now() + 2200;
   AUDIO.silence(1.2);
   AUDIO.broadcastVoice("쉬어도 되는 건 너", "fractured");
   showSubtitle("쉬어도 되는 건 방송자가 아닙니다.");
   later(() => $("#subtitle").classList.add("hidden"), 2400);
   later(() => { if (!state.ended) chatAdd("너한테 쉬라고 한 거 아니야", "creep"); }, 1500);
+  addClue("검색 요청 BRD-NULL-REST — 방송자가 없어서 휴식 요청이 시청자에게 재배정됐다.",
+    "→ 마지막_괴담.txt를 읽고 SYSTEM MENU에서 방송자를 기록 밖으로 내보낸다.");
+  updateObjective();
   shakeFrame();
 });
 
@@ -1910,7 +1935,8 @@ function openFinalTale() {
   }, 6500);
 
   addClue("마지막_괴담.txt — 이 방송 이야기다. 마지막 줄에 내 이름이 적혀 있다.",
-    "→ 괴담은 끝까지 들어야 끝난다. 어떤 엔딩을 골라도 마지막 줄은 남는다.");
+    "→ 방송자에게 직접 휴식을 요청한다. 플랫폼 검색창에 '언니 쉬어'.");
+  updateObjective();
 }
 
 /* fan_chat_log.txt — 깨진 줄 클릭 퍼즐 */
@@ -2552,6 +2578,18 @@ function restBlockers() {
   return r;
 }
 
+function broadcasterReleaseBlockers() {
+  const blockers = [];
+  if (state.routineSourceUsed) blockers.push("release denied: routine source restored");
+  if (!state.routineCleared) blockers.push("routine_queue 미종료");
+  if (!state.restRefusalRead) blockers.push("rest_refusal.log 미확인");
+  if (!state.negationRule) blockers.push("왜곡 규칙 미확인");
+  if (!state.dnrRead) blockers.push("do_not_restore.txt 미확인");
+  if (!state.finalTaleRead) blockers.push("마지막_괴담.txt 미확인");
+  if (!state.releaseRequestSent) blockers.push("release token 없음 — 검색: 언니 쉬어");
+  return blockers;
+}
+
 function openMenu() {
   if (!state.menuUnlocked) { chatSys("SYSTEM MENU: locked."); return; }
   showScreen("menu");
@@ -2604,6 +2642,53 @@ function openMenu() {
     blockers.length ? "[5] rest unavailable" : "rest available — 루틴을 끊고, 복원하지 않고, 나간다",
     () => runEnding("R"), blockers.length > 0, blockers);
   if (!blockers.length) restBtn.classList.add("rest-on");
+
+  const releaseBlockers = broadcasterReleaseBlockers();
+  const releaseBtn = mk("[6] release_broadcaster.exe",
+    releaseBlockers.length
+      ? "broadcaster release unavailable"
+      : "TRUE EXIT — 대체 소스를 끄고 방송자와 시청자를 함께 내보낸다",
+    () => runBroadcasterRelease(), releaseBlockers.length > 0, releaseBlockers);
+  if (!releaseBlockers.length) releaseBtn.classList.add("release-on");
+}
+
+function runBroadcasterRelease() {
+  if (state.ended || state.endingPending || broadcasterReleaseBlockers().length) return;
+  state.endingPending = true;
+  clearTimers();
+  showScreen("live");
+  $("#clue-panel").classList.add("hidden");
+  $("#live-badge").textContent = "RELEASING";
+  $("#stream-title").textContent = "[마지막 방송] 오늘은 여기까지";
+  $("#status-text").textContent = "release protocol: BRD-NULL-REST";
+  $("#stage").classList.add("release-sequence");
+  AUDIO.stopBgm();
+  AUDIO.silence(5.5);
+  AUDIO.radioTune(2.4);
+
+  later(() => chatSys("release token accepted."), 450);
+  later(() => {
+    $("#status-text").textContent = "routine_queue: TERMINATED | generated_voice: disconnecting";
+    showSubtitle("방송자를 붙잡고 있던 소스를 끊습니다.");
+    AUDIO.broadcastVoice("오늘 괴담은 여기까지", "host");
+  }, 1350);
+  later(() => chatSys("chat_stream: detached from avatar_motion"), 2450);
+  later(() => {
+    chatSys("channel_archive_voice: released");
+    AUDIO.voice("고마워", 0.62, 0.96, false);
+  }, 3350);
+  later(() => {
+    $("#figure-img").style.visibility = "hidden";
+    $("#figure").style.visibility = "hidden";
+    $("#stage-caption").textContent = "substitute_0: stopped";
+    $("#status-text").textContent = "broadcaster: released | viewer_current: releasing";
+  }, 4550);
+  later(() => {
+    $("#live-badge").textContent = "OFFLINE";
+    showSubtitle("오늘 괴담은 여기까지. 같이 나가자.");
+    AUDIO.broadcastVoice("반죽이들 잘 자", "host");
+  }, 5500);
+  later(() => endingSequence("B"), 7200);
 }
 
 function menuRestore() {
@@ -2734,11 +2819,11 @@ document.addEventListener("visibilitychange", () => {
 /* ── 엔딩 공통 + NG+ 저장 ─────────────────────────────── */
 
 /* 엔딩 직전 마이크 변주: 죽어 있던 마이크가 아주 짧게 한 번 더 떨린다.
- * rest 엔딩만 예외 — 그때만 마이크는 끝까지 조용하다. */
+ * rest와 broadcaster release 엔딩은 예외 — 둘 다 생성 마이크를 끈다. */
 function runEnding(key) {
   if (state.ended || state.endingPending) return;
   state.endingPending = true;
-  if (key !== "R" && state.phase >= 2 && !state.micOutroDone) {
+  if (key !== "R" && key !== "B" && state.phase >= 2 && !state.micOutroDone) {
     state.micOutroDone = true;
     showScreen("live");
     state.micAliveUntil = Date.now() + 2400;
@@ -2758,14 +2843,14 @@ function endingSequence(key) {
   state.endingPending = false;
   state.ended = true;
   clearTimers();
-  if (key !== "R") AUDIO.glitch(1);
+  if (key !== "R" && key !== "B") AUDIO.glitch(1);
   AUDIO.stopAll();
-  AUDIO.ending(key === "R" ? "rest" : "bad");
+  AUDIO.ending(key === "R" ? "rest" : (key === "B" ? "escape" : "bad"));
 
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       runs: save.runs + 1,
-      lastEnding: { A: "exited", C: "sent", D: "restored", E: "preserved", F: "not moving", R: "rest accepted" }[key],
+      lastEnding: { A: "exited", B: "broadcaster released", C: "sent", D: "restored", E: "preserved", F: "not moving", R: "rest accepted" }[key],
       lastDisplayed: state.lastCorrupted || "",
     }));
     localStorage.removeItem(CHECKPOINT_KEY);
@@ -2792,7 +2877,7 @@ function endingSequence(key) {
       const line = lines[i++];
       const span = document.createElement("span");
       if (/not found|kneaded|굳는|inactive|denied/.test(line)) span.className = "bad";
-      if (/rest accepted|나갔습니다/.test(line)) span.className = "ok";
+      if (/rest accepted|나갔습니다|released|OFFLINE|같이 나갔습니다/.test(line)) span.className = "ok";
       span.textContent = line + "\n";
       log.appendChild(span);
       setTimeout(step, line === "" ? 480 : 220 + Math.random() * 230);

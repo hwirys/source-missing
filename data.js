@@ -737,7 +737,12 @@ test #4: (무제)               → 전송됨. 내용 없음.
   },
   todoTrapNames: ["confirm_rest_after_stream.todo", "one_more_clip.todo", "just_one_reply.todo"],
 
-  routineSuccess: ["routine loop weakened.", "rest option partially available."],
+  routineSuccess: [
+    "ROUTINE TERMINATED.",
+    "all linked tasks: closed",
+    "task regeneration: disabled",
+    "이 루틴은 완전히 종료되었습니다.",
+  ],
   routineFail: ["routine_queue regenerated.", "reason: one more task"],
 
   /* ── Block 5: 기록 대조 퀴즈 ──────────────────────────── */
@@ -908,6 +913,14 @@ broadcaster: not found
 chat_stream: active`,
 
   /* ── 엔딩 ─────────────────────────────────────────────── */
+  endingMeta: {
+    A: { title: "강제 종료", desc: "시청자는 연결을 끊었다. 방송은 그 빈자리를 기록으로 채웠다.", stamp: "STREAM REJECTED" },
+    C: { title: "마지막 메시지", desc: "보낸 말은 작별이 되지 못하고 형상의 움직임으로 배정되었다.", stamp: "MESSAGE ARCHIVED" },
+    D: { title: "대체 방송자", desc: "복원은 사람을 돌려놓지 않았다. 기록들로 방송할 무언가를 완성했다.", stamp: "SOURCE GENERATED" },
+    E: { title: "보존된 시청자", desc: "현재의 시청자도 하나의 기록이 되어 다음 방송에 남았다.", stamp: "VIEWER PRESERVED" },
+    F: { title: "정지 화면", desc: "움직이지 않는 시청자는 가장 오래 쓸 수 있는 화면이 되었다.", stamp: "STILL SOURCE SAVED" },
+    R: { title: "허가된 휴식", desc: "방송은 계속되지만, 끊어진 루틴은 더는 당신을 다시 부르지 못한다.", stamp: "REST ACCEPTED" },
+  },
   endings: {
     A:
 `stream closed by viewer.

@@ -21,6 +21,7 @@ const AUDIO = (() => {
   function init() {
     if (started) {
       if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
+      if (!roomEl) startRoomTone();
       return;
     }
     started = true;
@@ -248,6 +249,112 @@ const AUDIO = (() => {
     carrier.stop(now + dur);
   }
 
+  /* 위장 방송 전용 다층 보이스. 자막 한 줄마다 저역 진행자, 불안정한
+   * 포먼트 합성음, 좌우로 새는 숨소리를 겹쳐서 단순 음성 조각이 아닌
+   * 하나의 '방송 목소리'처럼 이어지게 한다. */
+  function broadcastVoice(text, mood = "host") {
+    if (!ctx || !master) return;
+    const words = String(text).replace(/[()"'.—]/g, " ").trim().split(/\s+/).filter(Boolean);
+    const syllables = Math.max(2, Math.min(9, words.length * 2));
+    const now = ctx.currentTime;
+    const step = mood === "recording" ? 0.16 : 0.135;
+    const base = mood === "fractured" ? 132 : (mood === "recording" ? 158 : 146);
+
+    for (let i = 0; i < syllables; i++) {
+      const at = now + i * step;
+      const dur = step * (0.72 + Math.random() * 0.35);
+      const pitch = base * (1 + (Math.random() - 0.5) * (mood === "fractured" ? 0.22 : 0.1));
+      const carrier = ctx.createOscillator();
+      const harmonic = ctx.createOscillator();
+      const formantLow = ctx.createBiquadFilter();
+      const formantHigh = ctx.createBiquadFilter();
+      const voiceGain = ctx.createGain();
+
+      carrier.type = "sawtooth";
+      harmonic.type = "triangle";
+      carrier.frequency.setValueAtTime(pitch, at);
+      harmonic.frequency.setValueAtTime(pitch * (2.01 + Math.random() * 0.025), at);
+      if (mood === "fractured" && i % 3 === 2) {
+        carrier.frequency.exponentialRampToValueAtTime(pitch * 0.58, at + dur);
+      }
+      formantLow.type = "bandpass";
+      formantLow.frequency.value = 520 + (i % 3) * 130;
+      formantLow.Q.value = 7;
+      formantHigh.type = "peaking";
+      formantHigh.frequency.value = 1450 + (i % 4) * 210;
+      formantHigh.Q.value = 8;
+      formantHigh.gain.value = 9;
+      voiceGain.gain.setValueAtTime(0.0001, at);
+      voiceGain.gain.exponentialRampToValueAtTime(mood === "recording" ? 0.018 : 0.026, at + 0.018);
+      voiceGain.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+      carrier.connect(formantLow);
+      harmonic.connect(formantLow);
+      formantLow.connect(formantHigh).connect(voiceGain);
+
+      if (ctx.createStereoPanner) {
+        const pan = ctx.createStereoPanner();
+        pan.pan.value = Math.sin(i * 1.7) * 0.32;
+        voiceGain.connect(pan).connect(master);
+      } else {
+        voiceGain.connect(master);
+      }
+      carrier.start(at);
+      harmonic.start(at);
+      carrier.stop(at + dur + 0.02);
+      harmonic.stop(at + dur + 0.02);
+
+      // 자음 대신 들리는 짧은 숨/노이즈가 매 음절 앞에서 조금씩 샌다.
+      if (i % 2 === 0) {
+        const breath = ctx.createBufferSource();
+        const breathBand = ctx.createBiquadFilter();
+        const breathGain = ctx.createGain();
+        breath.buffer = noiseBuffer(0.055);
+        breathBand.type = "bandpass";
+        breathBand.frequency.value = 2400 + Math.random() * 1300;
+        breathBand.Q.value = 4;
+        breathGain.gain.setValueAtTime(0.012, at);
+        breathGain.gain.exponentialRampToValueAtTime(0.0001, at + 0.05);
+        breath.connect(breathBand).connect(breathGain).connect(master);
+        breath.start(at);
+      }
+    }
+  }
+
+  /* 엔딩 도장음. rest는 상승하며 닫히고, 나머지는 저역이 내려앉은 뒤
+   * 마지막 고주파만 남아 회차가 실제로 끝났음을 청각적으로 구분한다. */
+  function ending(kind = "bad") {
+    if (!ctx || !master) return;
+    const now = ctx.currentTime;
+    const resolved = kind === "rest";
+    const notes = resolved ? [220, 330, 440, 660] : [110, 82, 55];
+    notes.forEach((frequency, index) => {
+      const at = now + index * (resolved ? 0.2 : 0.28);
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = resolved ? "sine" : (index === 0 ? "sawtooth" : "triangle");
+      osc.frequency.setValueAtTime(frequency, at);
+      if (!resolved) osc.frequency.exponentialRampToValueAtTime(Math.max(28, frequency * 0.62), at + 1.4);
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(resolved ? 0.065 : 0.085, at + 0.035);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + (resolved ? 0.9 : 1.8));
+      osc.connect(gain).connect(master);
+      osc.start(at);
+      osc.stop(at + (resolved ? 1 : 1.9));
+    });
+    if (!resolved) {
+      const hiss = ctx.createBufferSource();
+      const high = ctx.createBiquadFilter();
+      const gain = ctx.createGain();
+      hiss.buffer = noiseBuffer(2.1);
+      high.type = "highpass";
+      high.frequency.value = 3600;
+      gain.gain.setValueAtTime(0.025, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.1);
+      hiss.connect(high).connect(gain).connect(master);
+      hiss.start(now);
+    }
+  }
+
   /* 어중간한 AI 합성풍 BGM (assets/<이름>.mp3). 동시에 하나만 */
   let bgmEl = null;
   function bgm(name, vol = 0.4) {
@@ -439,5 +546,5 @@ const AUDIO = (() => {
     activeVoiceEls.clear();
   }
 
-  return { init, tick, glitch, voice, silence, thump, radioTune, bgm, stopBgm, ambient, ui, stopAll };
+  return { init, tick, glitch, voice, broadcastVoice, ending, silence, thump, radioTune, bgm, stopBgm, ambient, ui, stopAll };
 })();

@@ -20,8 +20,12 @@
     <div class="intro-sub">사라진 방송</div>
     <p class="intro-premise">방송자는 사라졌고, 방송은 꺼지지 않았다.<br>남은 건 채팅과 기록뿐.</p>
     <p class="intro-how">관찰하고 &middot; 눌러보고 &middot; 채팅하세요</p>
-    <p class="intro-note">🎧 이어폰 권장 &nbsp;|&nbsp; 약 40–60분</p>
-    <button id="btn-enter" class="ghost-btn">[ 접속 ]</button>
+    <p class="intro-note">🎧 이어폰 권장 &nbsp;|&nbsp; 첫 회차 약 20–35분</p>
+    <div class="intro-actions">
+      <button id="btn-enter" class="ghost-btn">[ 새로 접속 ]</button>
+      <button id="btn-continue" class="ghost-btn hidden">[ 이어하기 ]</button>
+      <button id="btn-ng-start" class="ghost-btn ng-skip hidden">[ 다회차 빠른 진행 ]</button>
+    </div>
   </div>
 </div>
 
@@ -43,6 +47,8 @@
       <span class="gnb-mag" aria-hidden="true">⌕</span>
     </label>
     <div class="gnb-right">
+      <button type="button" class="gnb-btn save-control" data-cmd="save" title="현재 진행 저장 (Ctrl+S)">저장</button>
+      <button type="button" class="gnb-btn load-control" data-cmd="load" title="저장 지점 불러오기 (Ctrl+L)">불러오기</button>
       <span class="gnb-icon" title="알림" aria-hidden="true">♢</span>
       <button id="btn-login" type="button" class="gnb-btn">로그인</button>
       <span class="gnb-avatar" aria-hidden="true"></span>
@@ -126,6 +132,7 @@
           <button data-cmd="clues" id="btn-clues">traces (0)</button>
           <button data-cmd="lastmsg" id="btn-lastmsg" class="hidden">last_message</button>
           <button data-cmd="menu" id="btn-menu" class="hidden">SYSTEM MENU</button>
+          <button data-cmd="ng-skip" id="btn-ng-skip" class="ng-skip hidden">다회차 검증 구간 스킵</button>
           <button data-cmd="quit" class="danger">end_stream</button>
         </div>
       </div>
@@ -213,6 +220,7 @@
 <div id="screen-routine" class="screen winbg">
   <div class="frame win">
     <div class="topbar"><span class="win-ico">▤</span><span class="path">C:\stream\Desktop\routine_queue\</span><span class="win-btns"><b>─</b><b>▢</b><b class="win-x" data-cmd="desktop">✕</b></span></div>
+    <div id="routine-state-banner" class="routine-state-banner active">ROUTINE ACTIVE · 처리 대기</div>
     <div class="main-row">
       <div class="file-list" id="todo-list"></div>
       <div class="file-view-wrap">
@@ -257,8 +265,16 @@
 
 <!-- ── 엔딩 화면 ───────────────────────────────────────── -->
 <div id="screen-ending" class="screen">
-  <pre id="ending-log"></pre>
-  <button id="btn-reconnect" class="ghost-btn hidden">[ reconnect ]</button>
+  <div id="ending-card" class="ending-card">
+    <div id="ending-stamp" class="ending-stamp">CASE CLOSED</div>
+    <div id="ending-code" class="ending-code">ENDING --</div>
+    <h1 id="ending-title">기록 종료</h1>
+    <p id="ending-desc" class="ending-desc"></p>
+    <div class="ending-rule"></div>
+    <pre id="ending-log"></pre>
+    <div id="ending-complete" class="ending-complete hidden">ENDING RECORDED · 이 회차는 종료되었습니다</div>
+    <button id="btn-reconnect" class="ghost-btn hidden">[ 다음 회차 ]</button>
+  </div>
 </div>
 
 <!-- ── 단서 노트 ───────────────────────────────────────── -->
@@ -271,6 +287,8 @@
   <span class="task-start">⊞</span>
   <span class="task-item">탐색기</span>
   <span class="task-item dimmed">stream_overlay.exe</span>
+  <button class="task-save save-control" data-cmd="save" title="현재 진행 저장">저장</button>
+  <button class="task-save load-control" data-cmd="load" title="저장 지점 불러오기">불러오기</button>
   <span class="task-clock">--:--<br>--/--/----</span>
 </div>
 

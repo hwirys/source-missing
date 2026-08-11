@@ -68,12 +68,12 @@ button:focus-visible, input:focus-visible, .clickable:focus-visible, .stage:focu
 .screen.active { display: flex; flex-direction: column; }
 
 /* ── 부팅 / 엔딩 ─────────────────────────────── */
-#screen-boot, #screen-ending {
+#screen-boot {
   align-items: flex-start;
   justify-content: flex-start;
   padding: 48px;
 }
-#boot-log, #ending-log {
+#boot-log {
   white-space: pre-wrap;
   color: var(--dim);
   line-height: 1.7;
@@ -81,6 +81,99 @@ button:focus-visible, input:focus-visible, .clickable:focus-visible, .stage:focu
 }
 #boot-log .ok, #ending-log .ok { color: var(--chat); }
 #boot-log .bad, #ending-log .bad { color: var(--warn); }
+
+#screen-ending {
+  --ending-accent: #b64c58;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 32px;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(115,18,29,.2), transparent 45%),
+    linear-gradient(rgba(2,3,4,.92), rgba(2,3,4,.98)),
+    url("assets/bg_wait.png") center / cover no-repeat;
+}
+#screen-ending::before, #screen-ending::after {
+  content: "";
+  position: fixed;
+  left: 0; right: 0;
+  height: clamp(22px, 6vh, 70px);
+  z-index: 0;
+  background: #020203;
+}
+#screen-ending::before { top: 0; }
+#screen-ending::after { bottom: 0; }
+.ending-card {
+  position: relative;
+  z-index: 1;
+  width: min(820px, 94vw);
+  min-height: min(700px, 84vh);
+  padding: clamp(24px, 5vw, 58px);
+  border: 1px solid color-mix(in srgb, var(--ending-accent) 65%, #333);
+  border-top: 4px solid var(--ending-accent);
+  background: rgba(7,8,10,.93);
+  box-shadow: 0 0 90px rgba(0,0,0,.9), inset 0 0 50px rgba(0,0,0,.5);
+  animation: ending-arrive 1.15s cubic-bezier(.2,.8,.2,1) both;
+}
+.ending-card.ending-R { --ending-accent: var(--chzzk); }
+.ending-stamp {
+  display: inline-block;
+  padding: 5px 9px;
+  border: 1px solid var(--ending-accent);
+  color: var(--ending-accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  transform: rotate(-1deg);
+}
+.ending-code {
+  margin-top: 26px;
+  color: var(--ending-accent);
+  font-size: 13px;
+  letter-spacing: 4px;
+}
+.ending-card h1 {
+  margin-top: 10px;
+  color: #f4f5f6;
+  font: 800 clamp(34px, 7vw, 64px)/1.1 var(--font-old);
+  letter-spacing: 5px;
+  text-shadow: 0 0 30px color-mix(in srgb, var(--ending-accent) 30%, transparent);
+}
+.ending-desc {
+  max-width: 620px;
+  margin-top: 16px;
+  color: #b9bec5;
+  font: 14px/1.8 var(--font-old);
+}
+.ending-rule {
+  width: 100%;
+  height: 1px;
+  margin: 26px 0 20px;
+  background: linear-gradient(90deg, var(--ending-accent), transparent);
+}
+#ending-log {
+  min-height: 230px;
+  white-space: pre-wrap;
+  color: var(--dim);
+  line-height: 1.7;
+}
+.ending-complete {
+  margin-top: 22px;
+  padding: 11px 14px;
+  border-left: 3px solid var(--ending-accent);
+  background: color-mix(in srgb, var(--ending-accent) 10%, transparent);
+  color: var(--ending-accent);
+  font-weight: 800;
+  letter-spacing: 1px;
+  animation: ending-mark .65s steps(2) both;
+}
+.ending-card .ghost-btn { border-color: var(--ending-accent); color: var(--ending-accent); }
+@keyframes ending-arrive {
+  0% { opacity: 0; transform: scale(1.08); filter: blur(8px); }
+  55% { opacity: 1; filter: blur(0); }
+  100% { transform: scale(1); }
+}
+@keyframes ending-mark { from { opacity: 0; } to { opacity: 1; } }
 
 .ghost-btn {
   margin-top: 32px;
@@ -415,6 +508,21 @@ body.shake .frame { animation: shake .18s linear; }
 .action-row button:hover { border-color: var(--accent); }
 .action-row button.done { color: var(--chat); border-color: var(--chat); cursor: default; }
 
+.routine-state-banner {
+  flex: 0 0 auto;
+  padding: 10px 16px;
+  border-bottom: 1px solid #1a1a1a;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+.routine-state-banner.active { color: #e29a6e; background: rgba(132,69,36,.18); }
+.routine-state-banner.terminated {
+  color: #69dda3;
+  background: rgba(24,113,72,.2);
+  box-shadow: inset 4px 0 #39d98a;
+}
+
 .file-list button.locked { color: var(--dim); }
 .file-list button.locked::after { content: "  🔒"; }
 .file-list button.folder { color: var(--accent); }
@@ -598,6 +706,8 @@ body.shake .frame { animation: shake .18s linear; }
 .win .file-list button.sel { background: rgba(0, 120, 212, .38); color: #fff; }
 .win .file-list button.new { box-shadow: inset 2px 0 var(--warn); }
 .win .file-list button.odd { color: var(--warn); }
+.win .file-list button.done { color: #6fe0a8; background: rgba(33,105,72,.18); }
+.win .file-list button.cancelled { color: #777d85; text-decoration: line-through; opacity: .76; }
 
 .win .cmdbar { background: #2b2b2b; border-top: 1px solid #1a1a1a; }
 .win .cmdbar button { background: #3a3d41; border-radius: 4px; }
@@ -628,6 +738,16 @@ body.in-windows .taskbar { display: flex; }
 .task-start { font-size: 17px; cursor: default; }
 .task-item { padding: 4px 12px; background: #2e3033; border-radius: 4px; }
 .task-item.dimmed { background: none; color: var(--muted); }
+.task-save {
+  padding: 5px 10px;
+  border: 1px solid #46494e;
+  border-radius: 4px;
+  background: #303236;
+  color: #d8dadd;
+  font: 12px var(--font-sans);
+  cursor: pointer;
+}
+.task-save:disabled { opacity: .42; cursor: default; }
 .task-clock {
   margin-left: auto;
   font-family: var(--font-ui);
@@ -751,6 +871,8 @@ body.in-windows .taskbar { display: flex; }
   cursor: pointer;
 }
 .gnb-btn:hover { background: var(--panel-soft); }
+.gnb-btn:disabled { opacity: .42; cursor: default; }
+.gnb-btn.save-control, .gnb-btn.load-control { padding-inline: 10px; font-size: 12px; }
 .gnb-avatar { width: 30px; height: 30px; border-radius: 50%;
   background: linear-gradient(135deg, #3a3d44, #24262a); }
 
@@ -1222,6 +1344,10 @@ body.in-windows .taskbar { display: flex; }
   font-weight: 700;
 }
 .intro-card .ghost-btn:hover { background: rgba(0,248,137,.12); border-color: var(--chzzk); }
+.intro-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.intro-actions .ghost-btn { margin-top: 22px; }
+.intro-actions .ng-skip { border-color: #70a8c0; color: #91bfd1; }
+.ng-skip { box-shadow: inset 0 0 0 1px rgba(105,172,201,.18); }
 
 /* 중간 폭에서는 치지직의 접힌 사이드바처럼 아이콘만 남긴다. */
 @media (max-width: 1390px) and (min-width: 861px) {
@@ -1246,6 +1372,9 @@ body.in-windows .taskbar { display: flex; }
   .gnb-icon, .gnb-avatar { display: none; }
   .gnb-logo { font-size: 18px; }
   .gnb-logo-mark { width: 24px; height: 24px; font-size: 15px; }
+  .gnb-right { gap: 5px; }
+  .gnb-btn.save-control, .gnb-btn.load-control { padding: 5px 7px; font-size: 11px; }
+  #btn-login { display: none; }
 
   .content-col { display: block; }
   .chzzk-page .stage {
@@ -1306,6 +1435,14 @@ body.in-windows .taskbar { display: flex; }
   /* 인트로 카드 */
   .intro-card { max-width: 92vw; margin: 18px auto 0; padding: 20px; }
   .intro-title { font-size: 24px; }
+  .intro-actions { flex-direction: column; gap: 8px; }
+  .intro-actions .ghost-btn { width: 100%; margin-top: 0; }
+  .intro-actions .ghost-btn:first-child { margin-top: 18px; }
+
+  #screen-ending { padding: 16px 10px; align-items: stretch; justify-content: flex-start; }
+  .ending-card { width: 100%; min-height: calc(100svh - 32px); padding: 26px 20px 42px; }
+  .ending-card h1 { font-size: 36px; letter-spacing: 3px; }
+  #ending-log { min-height: 210px; font-size: 12px; }
 
   /* 토스트: 상단 가로 꽉 */
   #toasts { top: 56px; left: 8px; right: 8px; }

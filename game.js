@@ -17,6 +17,7 @@ const $ = (sel) => document.querySelector(sel);
 /* ── NG+ 저장 ──────────────────────────────────────────── */
 
 const SAVE_KEY = "source_missing_save";
+const CHECKPOINT_KEY = "source_missing_checkpoint_v1";
 
 function loadSave() {
   try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || { runs: 0 }; }
@@ -54,6 +55,7 @@ const state = {
   routineCleared: false,
   restRefusalRead: false,
   spawnedTodos: [],
+  routineDone: new Set(),
 
   recViewed: new Set(),
   quizDone: false,
@@ -72,6 +74,7 @@ const state = {
   lastCorrupted: "",
   watching: false,
   ended: false,
+  endingPending: false,
   timers: [],
   progressAnnounced: 0,
 
@@ -109,6 +112,7 @@ const state = {
   viewerFlickAt: 0,
   viewerNoteDone: false,
   addrGhostDone: false,  // 주소창이 혼자 입력되는 건 한 번
+  ngFastForwarded: false,
 };
 
 /* ── 유틸 ──────────────────────────────────────────────── */
@@ -120,6 +124,201 @@ function clearTimers() { state.timers.forEach((id) => { clearTimeout(id); clearI
 const WIN_SCREENS = new Set(["desktop", "records", "archive", "puzzle", "routine", "restore", "menu"]);
 const RECORD_VIEW_NEED = 2;
 const CLIP_REVIEW_NEED = 2;
+let ngChatApplied = false;
+
+function readCheckpoint() {
+  try {
+    const value = JSON.parse(localStorage.getItem(CHECKPOINT_KEY));
+    return value && value.version === 1 && value.runBase === save.runs ? value : null;
+  } catch { return null; }
+}
+
+function checkpointTime(value) {
+  if (!value || !value.savedAt) return "";
+  try {
+    return new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit" })
+      .format(new Date(value.savedAt));
+  } catch { return ""; }
+}
+
+function updateSaveControls() {
+  const checkpoint = readCheckpoint();
+  document.querySelectorAll(".load-control").forEach((button) => {
+    button.disabled = !checkpoint;
+    button.title = checkpoint
+      ? `저장 지점 불러오기 · ${checkpointTime(checkpoint)}`
+      : "저장된 진행이 없습니다";
+  });
+  const continueButton = $("#btn-continue");
+  if (continueButton) {
+    continueButton.classList.toggle("hidden", !checkpoint);
+    if (checkpoint) continueButton.textContent = `[ 이어하기 · ${checkpoint.progress || 0}% ]`;
+  }
+  const ngStart = $("#btn-ng-start");
+  if (ngStart) ngStart.classList.toggle("hidden", save.runs < 1);
+  const ngSkip = $("#btn-ng-skip");
+  if (ngSkip) ngSkip.classList.toggle("hidden", save.runs < 1 || state.ngFastForwarded);
+}
+
+const CHECKPOINT_SCALARS = [
+  "phase", "playerMsgs", "motion", "energy", "restore", "titleDrifted",
+  "mapConfirmed", "alertFailRead", "wrongParse", "routineStep", "routineFails",
+  "routineCleared", "restRefusalRead", "quizDone", "negationRule", "endStreamHint",
+  "restoreRan", "routineSourceUsed", "dnrVisible", "dnrRead", "menuUnlocked",
+  "lastCorrupted", "nameEchoDone", "finalTaleVisible", "finalTaleRead",
+  "broadcastCount", "ghostNoticed", "greetNoticed", "substituteRead", "preReadDone",
+  "rawEchoNoted", "viewerNoteDone", "addrGhostDone", "progressAnnounced",
+  "ngFastForwarded",
+];
+
+const CHECKPOINT_SETS = [
+  "anoms", "fanBroken", "solvedPuzzles", "routineDone", "recViewed", "sources", "clipsDone",
+];
+
+function checkpointPayload() {
+  const payload = {
+    version: 1,
+    runBase: save.runs,
+    savedAt: new Date().toISOString(),
+    progress: progressSnapshot().percent,
+    resumeScreen: activeScreen(),
+    deskDir,
+    unlocked: { ...state.unlocked },
+    clues: state.clues.map((clue) => ({ ...clue })),
+    spawnedTodos: [...state.spawnedTodos],
+    echoes: [...state.echoes],
+    chatHtml: $("#chat-log").innerHTML,
+  };
+  CHECKPOINT_SCALARS.forEach((key) => { payload[key] = state[key]; });
+  CHECKPOINT_SETS.forEach((key) => { payload[key] = [...state[key]]; });
+  return payload;
+}
+
+function saveCheckpoint() {
+  if (state.ended) return;
+  if (state.endingPending) {
+    toast("종료 처리 중에는 저장할 수 없습니다", true);
+    AUDIO.ui("deny");
+    return;
+  }
+  if (restoring) {
+    toast("복원이 끝난 뒤 저장할 수 있습니다", true);
+    AUDIO.ui("deny");
+    return;
+  }
+  try {
+    const payload = checkpointPayload();
+    localStorage.setItem(CHECKPOINT_KEY, JSON.stringify(payload));
+    updateSaveControls();
+    toast(`진행 저장 완료 · ${payload.progress}%`);
+    chatSys(`checkpoint saved: ${payload.progress}%`);
+    AUDIO.ui("confirm");
+  } catch {
+    toast("이 브라우저에서는 진행을 저장할 수 없습니다", true);
+    AUDIO.ui("deny");
+  }
+}
+
+function resetTransientState() {
+  state.ended = false;
+  state.endingPending = false;
+  state.watching = false;
+  state.blackUntil = 0;
+  state.sharpUntil = 0;
+  state.listenUntil = 0;
+  state.restWindowUntil = 0;
+  state.micAliveUntil = 0;
+  state.broadcastUntil = 0;
+  state.clipUntil = 0;
+  state.lungeUntil = 0;
+  state.lastMsgMode = false;
+  state.lastActivity = Date.now();
+  state.liveStart = Date.now();
+  state.timers = [];
+  puzzleCtx = null;
+  restoring = false;
+  restoreBatch = [];
+  deskDir = "root";
+  nextChatAt = 0;
+  nextRestChatAt = 0;
+  nextBroadcastAt = 0;
+  lastGhostAt = 0;
+  preReadTimer = 0;
+}
+
+function syncStateUi() {
+  const anomalyTargets = {
+    clock: "#stream-timer", viewers: "#viewer-count", mic: "#mic-gauge", title: "#stream-title",
+  };
+  Object.entries(anomalyTargets).forEach(([key, selector]) => {
+    const element = $(selector);
+    if (element) element.classList.toggle("found", state.anoms.has(key));
+  });
+
+  const desktopButton = $("#btn-desktop");
+  desktopButton.classList.toggle("locked", !state.unlocked.desktop);
+  desktopButton.textContent = state.unlocked.desktop ? "filesystem" : "filesystem [locked]";
+  $("#btn-lastmsg").classList.toggle("hidden", state.phase < 2);
+  $("#btn-menu").classList.toggle("hidden", !state.menuUnlocked);
+  $("#statusbar").classList.toggle("alert", state.phase >= 3);
+  $("#status-text").textContent = DATA.statusbars[state.phase] || DATA.statusbars[1];
+  $("#stage-caption").textContent = state.phase >= 3 ? "identity source: repeated_names" : "source: missing";
+  $("#live-badge").textContent = "LIVE";
+  $("#subtitle").classList.add("hidden");
+  $("#voice-overlay").classList.add("hidden");
+  $("#btn-clues").textContent = `traces (${state.clues.length})`;
+  renderClues();
+  updateObjective();
+  updateSaveControls();
+}
+
+function resumeCheckpointScreen(name) {
+  switch (name) {
+    case "desktop": openDesktop(); break;
+    case "records": state.unlocked.records ? openRecords() : openDesktop(); break;
+    case "archive": openArchive(); break;
+    case "routine": state.unlocked.routine ? openRoutine() : openDesktop(); break;
+    case "restore": state.unlocked.restore ? openRestore() : openDesktop(); break;
+    case "menu": state.menuUnlocked ? openMenu() : showScreen("live"); break;
+    default: showScreen("live"); break;
+  }
+}
+
+function loadCheckpoint() {
+  const checkpoint = readCheckpoint();
+  if (!checkpoint) {
+    toast("불러올 저장 지점이 없습니다", true);
+    AUDIO.ui("deny");
+    updateSaveControls();
+    return false;
+  }
+
+  clearTimers();
+  AUDIO.stopAll();
+  AUDIO.init();
+  CHECKPOINT_SCALARS.forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(checkpoint, key)) state[key] = checkpoint[key];
+  });
+  CHECKPOINT_SETS.forEach((key) => {
+    state[key] = new Set(Array.isArray(checkpoint[key]) ? checkpoint[key] : []);
+  });
+  state.unlocked = { ...state.unlocked, ...(checkpoint.unlocked || {}) };
+  state.clues = Array.isArray(checkpoint.clues) ? checkpoint.clues.map((clue) => ({ ...clue })) : [];
+  state.spawnedTodos = Array.isArray(checkpoint.spawnedTodos) ? [...checkpoint.spawnedTodos] : [];
+  state.echoes = Array.isArray(checkpoint.echoes) ? [...checkpoint.echoes] : [];
+  resetTransientState();
+  deskDir = checkpoint.deskDir || "root";
+  $("#chat-log").innerHTML = checkpoint.chatHtml || "";
+  syncStateUi();
+  tryLoadCapture();
+  AUDIO.ambient("bgm_ominous", 0.16);
+  startRuntimeLoops();
+  resumeCheckpointScreen(checkpoint.resumeScreen);
+  toast(`저장 지점 복원 · ${checkpoint.progress || progressSnapshot().percent}%`);
+  chatSys("checkpoint restored.");
+  AUDIO.ui("confirm");
+  return true;
+}
 
 function showScreen(name) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
@@ -299,6 +498,7 @@ function boot() {
       later(step, t === "" ? 350 : 150 + Math.random() * 200);
     } else {
       $("#intro-card").classList.remove("hidden");
+      updateSaveControls();
     }
   };
   step();
@@ -308,6 +508,19 @@ $("#btn-enter").addEventListener("click", () => {
   AUDIO.init();
   AUDIO.ui("open");
   startLive();
+});
+
+$("#btn-continue").addEventListener("click", () => {
+  AUDIO.init();
+  AUDIO.ui("open");
+  loadCheckpoint();
+});
+
+$("#btn-ng-start").addEventListener("click", () => {
+  AUDIO.init();
+  AUDIO.ui("open");
+  startLive();
+  fastForwardNewGamePlus();
 });
 
 /* 플랫폼 크롬도 눌렀을 때 무반응으로 보이지 않게 세계관 안에서 응답한다. */
@@ -350,13 +563,23 @@ document.addEventListener("click", (e) => {
 function startLive() {
   state.liveStart = Date.now();
   state.lastActivity = Date.now();
-  if (save.runs >= 1) {
+  if (save.runs >= 1 && !ngChatApplied) {
     DATA.chat[2] = DATA.chat[2].concat(DATA.ngChat);
     DATA.chat[3] = DATA.chat[3].concat(DATA.ngChat);
+    ngChatApplied = true;
   }
   showScreen("live");
   tryLoadCapture();
   AUDIO.ambient("bgm_ominous", 0.16); // 불길한 BGM이 계속 깔린다
+  startRuntimeLoops();
+  chatSys("채팅에 연결되었습니다.");
+  later(() => toast("화면에서 어긋난 것을 클릭"), 1200);
+  if (save.runs >= 1) later(() => chatSys("returning_viewer detected."), 4000);
+  updateObjective();
+  updateSaveControls();
+}
+
+function startRuntimeLoops() {
   every(renderFigure, 110);
   every(tickClock, 1000);
   every(autoChat, 1000);
@@ -373,11 +596,60 @@ function startLive() {
   every(ghostTick, 12000);
   every(viewerTick, 9000);
   every(addrGhostTick, 4000);
-  chatSys("채팅에 연결되었습니다.");
-  later(() => toast("화면에서 어긋난 것을 클릭"), 1200);
   later(stuckNudge, 45000);
-  if (save.runs >= 1) later(() => chatSys("returning_viewer detected."), 4000);
-  updateObjective();
+}
+
+function fastForwardNewGamePlus() {
+  if (save.runs < 1 || state.ngFastForwarded) return;
+  state.ngFastForwarded = true;
+  state.anoms = new Set(Object.keys(DATA.anomalies).slice(0, DATA.anomalyNeed));
+  state.mapConfirmed = true;
+  state.alertFailRead = true;
+  state.fanBroken = new Set(Object.keys(FANLOG_PUZZLE_MAP).map(Number));
+  state.solvedPuzzles = new Set(DATA.puzzles.filter((p) => p.req).map((p) => p.id));
+  state.routineStep = 5;
+  state.routineCleared = true;
+  state.restRefusalRead = true;
+  state.spawnedTodos = [];
+  state.routineDone = new Set(Object.entries(DATA.todos)
+    .filter(([, todo]) => todo.action)
+    .map(([name]) => name));
+  state.recViewed = new Set(DATA.records.slice(0, RECORD_VIEW_NEED).map((record) => record.name));
+  state.quizDone = true;
+  state.negationRule = true;
+  state.endStreamHint = true;
+  state.clipsDone = new Set(DATA.clips.slice(0, CLIP_REVIEW_NEED).map((clip) => clip.id));
+  state.dnrVisible = true;
+  state.finalTaleVisible = true;
+  state.menuUnlocked = true;
+  Object.assign(state.unlocked, {
+    desktop: true, alert: true, records: true, routine: true, restore: true,
+  });
+  state.progressAnnounced = Math.floor(progressSnapshot().percent / 20);
+  setPhase(3);
+  if (!state.clues.some((clue) => clue.text.startsWith("다회차 검증"))) {
+    addClue("다회차 검증 완료: 관찰·파서·루틴 종료·기록/클립 대조를 이전 기록으로 확인했다.",
+      "→ do_not_restore.txt를 확인하고 restore/에서 이번 회차의 소스를 선택한다.");
+  }
+  syncStateUi();
+  deskDir = "root";
+  openDesktop();
+  setDeskView(
+`RETURNING VIEWER · VERIFIED SECTION SKIPPED
+
+✓ 방송 이상 징후 확인
+✓ 핵심 신호 복구
+✓ ROUTINE TERMINATED
+✓ 기록 및 클립 대조
+
+반복 검증 구간을 건너뛰었습니다.
+이번 회차의 선택은 아직 확정되지 않았습니다.
+
+NEXT  do_not_restore.txt 확인 → restore/ 소스 선택`);
+  toast("다회차 빠른 진행 · 반복 구간 완료");
+  chatSys("verified sections: skipped from previous run.");
+  AUDIO.ui("confirm");
+  updateSaveControls();
 }
 
 const bgLoaded = {};
@@ -631,7 +903,11 @@ function startFakeBroadcast() {
   later(() => { if (!state.ended) chatAdd(pick(B.reactStart)); }, 3400);
 
   lines.forEach((l, i) => {
-    later(() => { if (!state.ended) showSubtitle(l); }, 1500 + i * lineGap);
+    later(() => {
+      if (state.ended) return;
+      showSubtitle(l);
+      AUDIO.broadcastVoice(l, first ? "fractured" : "host");
+    }, 1500 + i * lineGap);
   });
 
   // 읽는 동안 합성 음성이 새어 나온다 — 진짜보다 한 끗 어긋난 로봇 톤
@@ -1233,8 +1509,21 @@ function handleCmd(cmd) {
     case "restore-run": runRestore(); break;
     case "puzzle-next": puzzleNext(); break;
     case "puzzle-exit": puzzleExit(); break;
+    case "save": saveCheckpoint(); break;
+    case "load": loadCheckpoint(); break;
+    case "ng-skip": fastForwardNewGamePlus(); break;
   }
 }
+
+document.addEventListener("keydown", (event) => {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+  const key = event.key.toLowerCase();
+  if (key !== "s" && key !== "l") return;
+  event.preventDefault();
+  if (activeScreen() === "boot" || state.ended) return;
+  if (key === "s") saveCheckpoint();
+  else loadCheckpoint();
+});
 
 /* ── Block 2: PC 파일 탐색 ────────────────────────────── */
 
@@ -1347,7 +1636,9 @@ function renderDesk() {
   updateAddr();
   deskEntries().forEach((e) => {
     const b = document.createElement("button");
-    b.textContent = e.name;
+    const routineEnded = e.name === "routine_queue/" && state.routineCleared;
+    b.textContent = routineEnded ? "✓ routine_queue/ [TERMINATED]" : e.name;
+    if (routineEnded) b.classList.add("done");
     if (e.f && e.f.type === "folder") {
       b.classList.add("folder");
       if (!isUnlocked(e.f)) b.classList.add("locked");
@@ -1575,7 +1866,11 @@ function playClip(clip) {
   AUDIO.radioTune(1.2);
 
   clip.lines.forEach((l, i) => {
-    later(() => { if (!state.ended) showSubtitle(l); }, introDelay + i * lineGap);
+    later(() => {
+      if (state.ended) return;
+      showSubtitle(l);
+      AUDIO.broadcastVoice(l, "recording");
+    }, introDelay + i * lineGap);
   });
   // 녹화 특유의 흐릿한 음성 잔재
   later(() => AUDIO.voice("아", 0.22, 0.9, true), introDelay + lineGap);
@@ -1755,14 +2050,36 @@ function openRoutine() {
   updateObjective();
 }
 
+function updateRoutineBanner() {
+  const banner = $("#routine-state-banner");
+  if (!banner) return;
+  banner.className = "routine-state-banner " + (state.routineCleared ? "terminated" : "active");
+  banner.textContent = state.routineCleared
+    ? "ROUTINE TERMINATED · 재생성 중지 · 이 구간은 완전히 종료되었습니다"
+    : `ROUTINE ACTIVE · 완료 ${state.routineDone.size}/3 · 순서대로 종료할 것`;
+}
+
+function routineItemStatus(name) {
+  const todo = DATA.todos[name];
+  if (!todo) return state.routineCleared ? "cancelled" : "active";
+  if (todo.log) return state.restRefusalRead ? "done" : "active";
+  if (todo.action) return state.routineDone.has(name) ? "done" : (state.routineCleared ? "done" : "active");
+  if (todo.trap && state.routineCleared) return "cancelled";
+  return "active";
+}
+
 function renderTodos() {
   const list = $("#todo-list");
   list.innerHTML = "";
   const names = Object.keys(DATA.todos).concat(state.spawnedTodos);
-  if (save.runs >= 2 && !state.routineCleared) names.push("skip_routine.sys");
+  if (save.runs >= 1 && !state.routineCleared) names.push("skip_routine.sys");
   names.forEach((name) => {
     const b = document.createElement("button");
-    b.textContent = name;
+    const itemState = routineItemStatus(name);
+    b.textContent = itemState === "done" ? `✓ ${name} · 완료`
+      : (itemState === "cancelled" ? `— ${name} · 생성 중지` : name);
+    if (itemState === "done") b.classList.add("done");
+    if (itemState === "cancelled") b.classList.add("cancelled");
     if (name.endsWith(".log")) b.classList.add("folder");
     if (state.spawnedTodos.includes(name)) b.classList.add("new");
     b.addEventListener("click", () => {
@@ -1772,6 +2089,7 @@ function renderTodos() {
     });
     list.appendChild(b);
   });
+  updateRoutineBanner();
 }
 
 function todoAction(label, fn) {
@@ -1790,7 +2108,7 @@ function openTodo(name) {
   state.lastActivity = Date.now();
 
   if (name === "skip_routine.sys") {
-    setTodoView("skip_routine.sys\n\n3회차 권한이 감지되었습니다.\n루틴 전체를 건너뛸 수 있습니다.");
+    setTodoView("skip_routine.sys\n\n다회차 기록이 감지되었습니다.\n이미 해결한 루틴 전체를 종료 처리할 수 있습니다.");
     todoAction("루틴 통째로 건너뛰기", () => routineSucceed(true));
     return;
   }
@@ -1802,6 +2120,16 @@ function openTodo(name) {
 
   const t = DATA.todos[name];
   setTodoView(t.body);
+
+  const itemState = routineItemStatus(name);
+  if (itemState === "done") {
+    setTodoView(t.body + "\n\n[처리 완료]\n이 항목은 종료되었으며 다시 생성되지 않습니다.");
+    return;
+  }
+  if (itemState === "cancelled") {
+    setTodoView(t.body + "\n\n[생성 중지]\n루틴이 종료되어 이 반복 작업은 취소되었습니다.");
+    return;
+  }
 
   if (t.log) {
     if (!state.restRefusalRead) {
@@ -1829,11 +2157,13 @@ function openTodo(name) {
     todoAction(t.action.label, () => {
       if (!state.restRefusalRead) { routineFail(name); return; }
       if (state.routineStep === t.step) {
+        state.routineDone.add(name);
         state.routineStep++;
         if (t.step === 4) { routineSucceed(false); return; }
-        setTodoView(t.body + `\n\n→ 처리됨. (${t.step - 1}/3)`);
+        setTodoView(t.body + `\n\n[처리 완료] · ${state.routineDone.size}/3\n이 항목은 다시 생성되지 않습니다.`);
         chatSys(`routine: ${name} 처리됨.`);
         AUDIO.tick();
+        renderTodos();
         updateObjective();
       } else {
         routineFail(name);
@@ -1862,6 +2192,14 @@ function routineFail(name) {
 
 function routineSucceed(skipped) {
   state.routineCleared = true;
+  if (skipped) {
+    state.restRefusalRead = true;
+    state.dnrVisible = true;
+  }
+  Object.entries(DATA.todos).forEach(([name, todo]) => {
+    if (todo.action) state.routineDone.add(name);
+  });
+  state.routineStep = 5;
   state.menuUnlocked = true;
   $("#btn-menu").classList.remove("hidden");
   setTodoView(DATA.routineSuccess.join("\n") +
@@ -1869,8 +2207,9 @@ function routineSucceed(skipped) {
     "\n\nrest_later.todo: 마지막 줄이 선택되었습니다." +
     "\n\n→ 방송 화면에 SYSTEM MENU 가 생겼습니다.");
   $("#todo-actions").innerHTML = "";
-  chatSys("routine loop weakened.");
-  chatSys("rest option partially available.");
+  renderTodos();
+  chatSys("routine loop terminated.");
+  chatSys("routine_queue will not regenerate.");
   addClue("루틴이 끊겼다. rest는 이제 시스템이 막을 수만은 없는 선택지다.",
     "→ 남은 조건은 do_not_restore.txt 에 정리되어 있다.");
   AUDIO.ui("confirm");
@@ -2104,7 +2443,7 @@ function openMenu() {
   showScreen("menu");
   $("#menu-head").textContent = DATA.menuHead +
     `\nrestore_rate: ${state.restore}%` +
-    `\nroutine: ${state.routineCleared ? "weakened" : (state.routineSourceUsed ? "restored" : "active")}`;
+    `\nroutine: ${state.routineCleared ? "TERMINATED (no regeneration)" : (state.routineSourceUsed ? "restored" : "active")}`;
 
   const opts = $("#menu-opts");
   opts.innerHTML = "";
@@ -2283,7 +2622,8 @@ document.addEventListener("visibilitychange", () => {
 /* 엔딩 직전 마이크 변주: 죽어 있던 마이크가 아주 짧게 한 번 더 떨린다.
  * rest 엔딩만 예외 — 그때만 마이크는 끝까지 조용하다. */
 function runEnding(key) {
-  if (state.ended) return;
+  if (state.ended || state.endingPending) return;
+  state.endingPending = true;
   if (key !== "R" && state.phase >= 2 && !state.micOutroDone) {
     state.micOutroDone = true;
     showScreen("live");
@@ -2301,10 +2641,12 @@ function runEnding(key) {
 
 function endingSequence(key) {
   if (state.ended) return;
+  state.endingPending = false;
   state.ended = true;
   clearTimers();
   if (key !== "R") AUDIO.glitch(1);
   AUDIO.stopAll();
+  AUDIO.ending(key === "R" ? "rest" : "bad");
 
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
@@ -2312,9 +2654,21 @@ function endingSequence(key) {
       lastEnding: { A: "exited", C: "sent", D: "restored", E: "preserved", F: "not moving", R: "rest accepted" }[key],
       lastDisplayed: state.lastCorrupted || "",
     }));
+    localStorage.removeItem(CHECKPOINT_KEY);
   } catch { /* 저장 불가 환경 */ }
 
   showScreen("ending");
+  const meta = DATA.endingMeta[key];
+  const card = $("#ending-card");
+  card.className = `ending-card ending-${key}`;
+  $("#ending-stamp").textContent = meta.stamp;
+  $("#ending-code").textContent = `ENDING ${key} · CASE CLOSED`;
+  $("#ending-title").textContent = meta.title;
+  $("#ending-desc").textContent = meta.desc;
+  $("#ending-complete").classList.add("hidden");
+  $("#btn-reconnect").classList.add("hidden");
+  document.title = `ENDING ${key} — ${meta.title} | SOURCE MISSING`;
+  updateSaveControls();
   const log = $("#ending-log");
   log.innerHTML = "";
   const lines = DATA.endings[key].split("\n");
@@ -2329,7 +2683,9 @@ function endingSequence(key) {
       log.appendChild(span);
       setTimeout(step, line === "" ? 480 : 220 + Math.random() * 230);
     } else {
+      $("#ending-complete").classList.remove("hidden");
       $("#btn-reconnect").classList.remove("hidden");
+      AUDIO.ui("confirm");
     }
   };
   step();
